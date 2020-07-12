@@ -1,0 +1,502 @@
+---
+title: 'Vanilla Neural Networks in R'
+subtitle: 'Designing and Building Neural Networks from Scratch in R, using no Deep Learning Frameworks'
+author: 'Author: [Chris Mahoney](https://www.linkedin.com/in/chrimaho/)'
+date: 'Special thanks to: Alex Scriven'
+toc-title: Contents
+output:
+    html_notebook: 
+        code_folding: none
+        highlight: haddock
+        includes:
+            after_body: footer.html
+            in_header: header.html
+        number_sections: yes
+        theme: lumen
+        toc: yes
+        toc_depth: 4
+        toc_float:
+            collapsed: no
+    html_document:
+        code_download: yes
+        highlight: haddock
+        number_sections: yes
+        template: default_toc.html
+        theme: lumen
+        toc: yes
+        toc_depth: 4
+        toc_float:
+            collapsed: no
+        includes:
+            in_header: header.html
+            after_body: footer.html
+---
+
+<style>
+.math {
+    <!-- font-size: 120%; -->
+    font-style: normal;
+    font-family: "Cambria Math";
+}
+.column {
+    float: left;
+    width: 50%;
+    border: 1px solid black;
+}
+.row:after {
+    content: "";
+    display: table;
+    clear: both;
+}
+h1, .h1 {
+    margin-top: 40px;
+    font-weight: bold;
+}
+h2, .h2 {
+    margin-top: 40px;
+    margin-left: 40px;
+}
+</style>
+
+
+# Introduction {#introduction}
+
+Modern-day Data Science techniques frequently use robust frameworks for designing and building machine learning solutions. In the [`R`](https://www.r-project.org/) community, packages such as the [`tidyverse`](https://www.tidyverse.org/) and the [`caret`](http://caret.r-forge.r-project.org/) packages are frequently referenced; and within [`Python`](), packages such as [`numpy`](https://numpy.org/), [`pandas`](https://pandas.pydata.org/), [`sci-kit learn`](https://scikit-learn.org/) are frequently referenced. There are even some packages that have been built to be used in either language, such as [`keras`](https://keras.io/), [`pytorch`](https://pytorch.org/), [`tensorflow`](https://www.tensorflow.org/). However, the limitation of using these packages is the '_blackbox_' phenomenon, where users do not understand what is happening behind-the-scenes (or 'under the hood', if you will). Users know how to use the functions, and can interpret the results, but don't necessarily know how the packages were able to achieve the results.
+
+The purpose of this paper is to create a 'back to basics' approach to designing Deep Learning solutions. The intention is not to create the most predictive model, nor is it to use the latest and greatest techniques (such as convolution or recursion); but the intention is to create a _basic_ neural network, from _scratch_, using _no_ frameworks, and to walk through the methodology.
+
+**Note**: The word '_Vanilla_' in 'Vanilla Neural Networks' simply refers to the fact it is built from scratch, and does not use any pre-existing frameworks in its construction.
+
+# Context {#context}
+
+There are already many websites and blogs which explain how this process is done. Such as [Jason Brownlee](https://machinelearningmastery.com/about/)'s article [_How to Code a Neural Network with Backpropagation In Python (from scratch)_](https://machinelearningmastery.com/implement-backpropagation-algorithm-scratch-python/), and [DeepLearning.ai](https://notebooks.azure.com/goldengrape/projects/deeplearning-ai)'s notebook [_dnn_app_utils_v2.py_](https://notebooks.azure.com/goldengrape/projects/deeplearning-ai/html/COURSE%201%20Neural%20Networks%20and%20Deep%20Learning/Week%204/Deep%20Neural%20Network%20Application_%20Image%20Classification/dnn_app_utils_v2.py) (on the [Microsoft Azure Notebooks](https://notebooks.azure.com/) network). However, these sources are all written in `Python`. Which is fine, if that's what is needed, and there are some very legitimate reasons to use `Python` over other languages. But this paper will be written in `R`.
+
+The `R` language was chosen for two reasons:
+
+1. It is the language that I am familiar with. Noting that I can speak `Python` (along with other languages); I just chose `R` to show how it can be achieved using this language.
+1. To prove that there are many different ways to achieve the same outcome. So, while there are sometimes legitimate constraints for choosing one language over another (business legacy, technological availability, system performance, etc), sometimes one language is chosen simply because it is stylistically more preferable.
+
+Therefore, let's see how to architect and construct a Vanilla Neural Network in `R`.
+
+# Layout {#layout}
+
+**Discuss how this notebook is set up**
+
+# Set Up {#setup}
+
+## Load Packages {#loadpackages}
+
+
+
+```{r Load Packages, eval=TRUE, echo=TRUE}
+library(tensorflow) #<-- Only used for getting the data. Nothing else
+library(tidyverse)  #<-- Used for accessing various tools
+library(magrittr)   #<-- Extends the `dplyr` syntax
+library(grDevices)  #<-- For plotting the images
+library(assertthat) #<-- Function assertions
+library(roxygen2)   #<-- Documentation is important
+library(caret)      #<-- Doing data partitioning
+library(stringi)    #<-- Some string manipulation parts
+library(DescTools)  #<-- The only package that properly checks `is.integer`
+```
+
+
+```{r Load Custom Functions, eval=TRUE, echo=FALSE}
+str_Format <- function(string, ...) {
+    #' @title String Formatter
+    #' @description Take an input string, and substitute in-string variables.
+    #' @note This is similar to the Python `string.foramt()` method.
+    #' @param string string. The string to be re-formatted. Note, each of the named arguments must be surrounded in curly brackets.
+    #' @param ... variables. A list of variables. Note, these can either be named or not; but they must all be named, or all be blank, because it cannot handle a mixture. Each of these arguments must align to the variables in curly brackets from the `string` argument. These will be combined in to a list.
+    #' @return A formatted string
+    #' @example str_Format("Sammy the {animal} {verb} a {noun}.", animal="shark", verb="made", noun="house")
+    #' @example str_Format("Sammy the {} {} a {}.", "shark", "made", "house")
+    #' @example "Sammy the {animal} {verb} a {noun}" %>% str_Format(animal="shark", verb="made", noun="house")
+    #' @references https://stackoverflow.com/questions/44763056/is-there-an-r-equivalent-of-pythons-string-format-function#answer-44763659
+    #' @author chrimaho
+    
+    # Import packages ----
+    require(stringr)
+    require(magrittr)
+    require(dplyr)
+    require(assertthat)
+    require(dynutils)
+    require(english)
+    
+    # Validations ----
+    assert_that(is.string(string))
+    assert_that(c("stringr", "magrittr", "dplyr", "assertthat", "dynutils", "english") %all_in% .packages(), msg="The packages must be mounted.")
+    
+    # Set Up ----
+    num_variables <- str_count(string, coll("{}"))
+    vars <- list(...)
+    
+    # Handle if vars are not named ----
+    if (num_variables>0) {
+        
+        # Add number in between each curly bracket
+        for (i in 1:num_variables) {
+            string %<>% str_replace(coll("{}"), paste0("{",as.english(i),"}"))
+        }
+        
+        # Name the vars as numbers
+        vars %<>% set_names(as.english(1:num_variables))
+        
+    }
+    
+    # Make environment ----
+    envir <- as.environment(vars)
+    parent.env(envir) <- .GlobalEnv
+    
+    # Perform substitution
+    string %<>% str_replace_all("\\{", "${")
+    str_return <- str_interp(string=string, env=envir)
+    
+    # Return ----
+    return(str_return)
+    
+}
+```
+
+
+## Get Data {#getdata}
+
+```{r Get Data, eval=TRUE, echo=TRUE}
+# Steps:
+# 1. Get data from Tensorflow
+# 2. Extract the second element (the test data)
+# 3. Re-name the objects
+
+# Run process
+cifa <- tf$keras$datasets$cifar10$load_data() %>% 
+    extract2(2) %>% 
+    set_names(c("images","classes"))
+```
+
+```{r Define Class List, eval=TRUE, echo=TRUE}
+# Source: https://github.com/EN10/CIFAR#classes
+ClassList <- list(
+    "0"="airplane",
+    "1"="automobile",
+    "2"="bird",
+    "3"="cat",
+    "4"="deer",
+    "5"="dog",
+    "6"="frog",
+    "7"="horse",
+    "8"="ship",
+    "9"="truck"
+)
+```
+
+```{r Check Data, eval=TRUE, echo=FALSE, results="asis"}
+# Define function for retrieving attributes
+GetAttributes <- function(object, name) {
+    #' @title Get Attributes
+    #' @description Extract and print the key attributes of an object, including `name`, `class`, `type`, `mode`, `dims`.
+    #' @note Add a note for the developer.
+    #' @param object any. The object to be checked
+    #' @return Nothing being returned
+    #' @author chrimaho
+    
+    # Get attributes
+    if(missing(name)) {
+        name <- deparse(substitute(object))
+    }
+    class <- class(object)
+    type <- typeof(object)
+    mode <- mode(object)
+    dims <- dim(object)
+    if(!length(dims)>0){
+        dims <- length(object)
+    }
+    
+    # Print attributes
+    "Object `{}`:  \n - class : `{}`  \n - type  : `{}`  \n - mode  : `{}`  \n - dims  : `{}`\n" %>% 
+        str_Format(
+            name,
+            class,
+            type,
+            mode,
+            dims
+        ) %>% 
+        str_remove_all("\"") %>% 
+        cat
+    
+    return(invisible(NULL))
+}
+
+# Print result
+GetAttributes(cifa$images)
+```
+
+## Check Images {#checkimages}
+
+```{r Extract Images, eval=TRUE, echo=TRUE}
+MakeImage <- function(images, index=1) {
+    #' @title Slice Array
+    #' @description Slice the images at a given index
+    #' @note Add a note for the developer.
+    #' @seealso https://stackoverflow.com/questions/32113942/importing-cifar-10-data-set-to-r#answer-39672323
+    #' @param images array. The array to be sliced.
+    #' @param index int. The integer to be sliced
+    #' @return An `rgb()` object.
+    #' @author chrimaho
+    
+    # Libraries ----
+    require(dplyr)
+    require(grDevices)
+    require(assertthat)
+    
+    # Validations ----
+    assert_that(is.array(images))
+    assert_that(is.count(index))
+    assert_that(images %>% dim %>% length == 4, msg="'images' must have 4 dimensions.")
+    
+    # Extract elements ----
+    img <- images[index,,,]
+    img.r <- img[,,1]
+    img.g <- img[,,2]
+    img.b <- img[,,3]
+    
+    # Make rgb ----
+    img.rgb <- rgb(img.r, img.g, img.b, maxColorValue=255)
+    
+    # Fix dimensions ----
+    dim(img.rgb) <- dim(img.r)
+    
+    # Return ----
+    return(img.rgb)
+}
+
+PlotImage <- function(images, classes, index=1) {
+    #' @title Plot Array
+    #' @description Plot a given image.
+    #' @note Add a note for the developer.
+    #' @seealso https://stackoverflow.com/questions/12918367/how-to-plot-with-a-png-as-background#answer-12918368
+    #' @param images array. The image to be plotted.
+    #' @param index int. The index of the image to be plotted.
+    #' @return Nothing is returned.
+    #' @author chrimaho
+    
+    # Libraries ----
+    require(dplyr)
+    require(grDevices)
+    require(assertthat)
+    require(grid)
+    
+    # Validations ----
+    assert_that(is.array(images))
+    assert_that(is.count(index))
+    assert_that(images %>% dim %>% length == 4, msg="'images' must have 4 dimensions.")
+    
+    # Slice images ----
+    img <- MakeImage(images, index)
+    lbl <- classes[index] %>% as.character() %>% ClassList[[.]]
+    
+    # Plot image ----
+    plot.new()
+    lim <- par()
+    rasterImage(img, lim$usr[1], lim$usr[3], lim$usr[2], lim$usr[4], interpolate=FALSE)
+    title(lbl, font.main=2)
+    
+    # Return ----
+    return(invisible(NULL))
+}
+rm(classes, SliceArray, PlotArray)
+```
+
+```{r View Images, eval=TRUE, echo=TRUE}
+for (i in 1:20) {
+    PlotImage(cifa$images, cifa$classes, i)
+}
+```
+## Split Data {#splitdata}
+
+```{r Split Data, eval=TRUE, echo=TRUE}
+set.seed(1234)
+partition <- createDataPartition(cifa$classes, p=0.7, list=FALSE)
+trn_img <- cifa$images[partition,,,]
+tst_img <- cifa$images[-partition,,,]
+trn_cls <- cifa$classes[partition]
+tst_cls <- cifa$classes[-partition]
+rm(partition)
+```
+
+```{r Check Splitting, eval=TRUE, echo=TRUE}
+for (i in c("trn_img","tst_img","trn_cls","tst_cls")) {
+    j <- get(i)
+    GetAttributes(j, i)
+}
+rm(i,j)
+```
+
+## Reshape Data {#reshapedata}
+
+```{r Reshape Data, eval=TRUE, echo=TRUE}
+trn_img <- array(trn_img, dim=c(dim(trn_img)[1], prod(dim(trn_img)[2:4]))) %>% t()
+tst_img <- array(tst_img, dim=c(dim(tst_img)[1], prod(dim(tst_img)[2:4]))) %>% t()
+trn_cls <- array(trn_cls, dim=c(1,length(trn_cls)))
+tst_cls <- array(tst_cls, dim=c(1,length(tst_cls)))
+```
+
+```{r Check Data Shapes, eval=TRUE, echo=TRUE}
+for (i in c("trn_img","tst_img","trn_cls","tst_cls")) {
+    print(c(i %s+% ":", i %>% get %>% dim %>% paste))
+}
+```
+
+## Standardise Data {#standardisedata}
+
+```{r Standardise Data, eval=TRUE, echo=TRUE}
+trn_img <- trn_img/255
+tst_img <- tst_img/255
+```
+
+# Instantiate the Network {#instantiatenetwork}
+
+## Set the Architecture
+
+- 5 hidden layers
+- 7 total layers
+    1. input = 3072
+    2. h1 = 100
+    3. h2 = 75
+    4. h3 = 50
+    5. h4 = 30
+    6. h5 = 20
+    7. output = 10
+- network is a list of lists
+- each layer is a list
+- all elements of the all lists are names
+
+```{r Instantiate Network Definition, eval=TRUE, echo=TRUE}
+InstantiateNetwork <- function(input=50, hidden=c(30,20,10), output=10) {
+    #' @title Add function title
+    #' @description Add function description.
+    #' @note Add a note for the developer.
+    #' @param input integer. What is Input1?
+    #' @param hidden vector of integers. What is Input1?
+    #' @param output integer. What is Input1?
+    #' @return What is being returned?
+    #' @author chrimaho
+    
+    # Validations ----
+    assert_that(IsWhole(input))
+    assert_that(is_vector(hidden))
+    assert_that(all(IsWhole(hidden)))
+    assert_that(IsWhole(output))
+    
+    # Set up ----
+    model = list()
+    names = c(
+        "input",
+        1:length(hidden),
+        "output"
+    )
+    
+    # Loop ----
+    for (layer in names) {
+        
+        # Make layer
+        model[[layer]] <- list(
+             "nodz"      = ""  #<-- Number of nodes in this layer.
+            ,"inpt"      = ""  #<-- Input matrix. Aka 'A_prev'. This is a duplicate of the activation of the previous layer, so for large networks this needs to be taken in to consideration.
+            ,"wgts"      = ""  #<-- Weights matrix. Aka 'W'.
+            ,"bias"      = ""  #<-- Bias vector. Aka 'b'.
+            ,"linr"      = ""  #<-- Linear matrix. Aka 'Z'. This is the result of the linear algebra between inpt, wgts and bias.
+            ,"acti"      = ""  #<-- Activation matrix. Aka 'A'. The result of applying an activation function to the linr matrix.
+            ,"acti_func" = ""  #<-- The activation function used.
+            ,"cost"      = ""  #<-- The overall cost of the model. This is a single value (the overall cost of the model), but is copied to each layer of the model.
+            ,"back_cost" = ""  #<-- Gradient of the cost vector. Aka 'dA_cost'.
+            ,"back_acti" = ""  #<-- Gradient of the Activation matrix. Aka 'dA'. The result of differentiation after having applied back propagation. with a given cost function.
+            ,"back_linr" = ""  #<-- Gradient of the Linear algebra matrix. Aka 'dZ'. The result of backwards linear differentiation back propagation.
+            ,"back_wgts" = ""  #<-- Gradient of the Weights matrix. Aka 'dW'. Also the result of back-prop.
+            ,"back_bias" = ""  #<-- Gradient of the Bias vector. Aka 'db'. Also the result of back-prop.
+        )
+        
+        # Set nodes
+        if (layer=="input") {
+            model[[layer]][["nodz"]] = input
+        } else if (layer=="output") {
+            model[[layer]][["nodz"]] = output
+        } else {
+            layer_index = str_sub(layer, -1) %>% IsWhole()
+            model[[layer]][["nodz"]] = hidden[layer_index]
+        }
+        
+    }
+    
+    # Return ----
+    return(model)
+}
+```
+
+```{r Instantiate Network, eval=TRUE, echo=TRUE}
+network_model <- InstantiateNetwork(
+    input=3072, 
+    hidden=c(100,75,50,30,20), 
+    output=10
+)
+```
+
+# Initialise the Network {#initialisenetwork}
+
+## Weight Initialisation
+
+```{r Add Nodes, eval=TRUE, echo=TRUE}
+InitialiserXavier <- function(nodes_in, nodes_out, order=6) {
+    #' @title Xavier Initialisation
+    #' @description Initialise the weights based on Xavier initialisation
+    #' @note Add a note for the developer.
+    #' @references 
+    #' @param nodes_in integer. The number of nodes coming in to this layer (ie. number of nodes in previous layer).
+    #' @param nodes_out integer. The number of nodes outgoing from this layer (ie. number of nodes in this layer).
+    #' @param order integer. The order of magnitude for this equation. Defaults to `6`.
+    #' @return A floating point number.
+    #' @author chrimaho
+    
+    # Validations ----
+    assert_that(IsWhole(nodes_in))
+    assert_that(IsWhole(nodes_out))
+    assert_that(IsWhole(order))
+    
+    # Do work ----
+    numer <- sqrt(order)
+    denom <- sqrt(nodes_in + nodes_out)
+    output <- numer/denom
+    
+    # Return ----
+    return(output)
+}
+
+InitialiserHe <- function(nodes_in, order=2) {
+    #' @title He Initialisation
+    #' @description Initialise the weights based on Xavier initialisation
+    #' @note Add a note for the developer.
+    #' @references
+    #' @param nodes_in integer. The number of nodes coming in to this layer (ie. number of nodes in previous layer).
+    #' @param order integer. The order of magnitude for this equation. Defaults to `6`.
+    #' @return A floating point number.
+    #' @author chrimaho
+    
+    # Validations ----
+    assert_that(IsWhole(nodes_in))
+    assert_that(IsWhole(order))
+    
+    # Do work ----
+    numer <- order
+    denom <- nodes_in
+    output <- sqrt(numer/denom)
+    
+    # Return ----
+    return(output)
+}
+```
+
+```{r}
+is.numeric(as.numeric("1"))
+names(network_model) %>% str_remove_all("hidden_") %>% as.numeric() %>% DescTools::IsWhole()
+assert_that(all(DescTools::IsWhole(c(100,75,50,30,20))))
+```
+
