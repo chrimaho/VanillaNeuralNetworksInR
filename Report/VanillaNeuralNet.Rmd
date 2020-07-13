@@ -156,6 +156,35 @@ str_Format <- function(string, ...) {
     return(str_return)
     
 }
+
+
+get_CountOfElementsWithCondition <- function(list_of_elements, condition=NULL) {
+    #' @title Get Count of Elements With Condition
+    #' @description Get the count of the number of elements in a list that meet a specified condition.
+    #' @note The `condition` must be a hidden function. Also note that the `warnings` are suppressed when running the `condition` function.
+    #' @param list_of_elements vector. The list of elements to check.
+    #' @param condition function. The condition for checking. Must be a hidden function.
+    #' @return An integer.
+    #' @example get_CountOfElementsWithCondition(c("i", "1", "2", "3", "o"), function(x){IsWhole(as.numeric(x))}) ## returns 3
+    #' @example get_CountOfElementsWithCondition(c("i", "1", "2", "3", "o"))                                      ## returns 5
+    #' @example get_CountOfElementsWithCondition(c("i", "1", "2", "3", "o"), 2)                                   ## throws error
+    #' @references https://thispointer.com/python-count-elements-in-a-list-that-satisfy-certain-conditions/#crayon-5ea195c434f39109077492-1
+    #' @author chrimaho
+    
+    # Validations
+    assert_that(is_vector(list_of_elements))
+    assert_that(or(is_function(condition), is.null(condition)), msg="'condition' must either be a function or the value 'NULL'.")
+    
+    # Do work
+    if (!is.null(condition)) {
+        count <- sum(suppressWarnings(condition(list_of_elements)), na.rm=TRUE)
+    } else {
+        count <- length(list_of_elements)
+    }
+    
+    # Return
+    return(count)
+}
 ```
 
 
@@ -190,12 +219,12 @@ ClassList <- list(
 ```
 
 ```{r Check Data, eval=TRUE, echo=FALSE, results="asis"}
-# Define function for retrieving attributes
-GetAttributes <- function(object, name) {
+get_ObjectAttributes <- function(object, name) {
     #' @title Get Attributes
     #' @description Extract and print the key attributes of an object, including `name`, `class`, `type`, `mode`, `dims`.
     #' @note Add a note for the developer.
-    #' @param object any. The object to be checked
+    #' @param object any. The object to be checked.
+    #' @param name string. The name of the object.
     #' @return Nothing being returned
     #' @author chrimaho
     
@@ -227,13 +256,15 @@ GetAttributes <- function(object, name) {
 }
 
 # Print result
-GetAttributes(cifa$images)
+get_ObjectAttributes(cifa$images)
 ```
+
+For this, the custom function `str_Format()` is used. The source code for this function can be found [here]().
 
 ## Check Images {#checkimages}
 
 ```{r Extract Images, eval=TRUE, echo=TRUE}
-MakeImage <- function(images, index=1) {
+set_MakeImage <- function(images, index=1) {
     #' @title Slice Array
     #' @description Slice the images at a given index
     #' @note Add a note for the developer.
@@ -269,7 +300,7 @@ MakeImage <- function(images, index=1) {
     return(img.rgb)
 }
 
-PlotImage <- function(images, classes, index=1) {
+plt_PlotImage <- function(images, classes, index=1) {
     #' @title Plot Array
     #' @description Plot a given image.
     #' @note Add a note for the developer.
@@ -291,7 +322,7 @@ PlotImage <- function(images, classes, index=1) {
     assert_that(images %>% dim %>% length == 4, msg="'images' must have 4 dimensions.")
     
     # Slice images ----
-    img <- MakeImage(images, index)
+    img <- set_MakeImage(images, index)
     lbl <- classes[index] %>% as.character() %>% ClassList[[.]]
     
     # Plot image ----
@@ -303,14 +334,22 @@ PlotImage <- function(images, classes, index=1) {
     # Return ----
     return(invisible(NULL))
 }
-rm(classes, SliceArray, PlotArray)
 ```
 
 ```{r View Images, eval=TRUE, echo=TRUE}
 for (i in 1:20) {
-    PlotImage(cifa$images, cifa$classes, i)
+    plt_PlotImage(cifa$images, cifa$classes, i)
 }
 ```
+
+## Fix data {#fixdata}
+
+```{r}
+cifa %>% extract2("classes") %>% head(100) %>% as.vector()
+cifa$classes <- ifelse(cifa$classes==1,1,0)
+cifa %>% extract2("classes") %>% head(100) %>% as.vector()
+```
+
 ## Split Data {#splitdata}
 
 ```{r Split Data, eval=TRUE, echo=TRUE}
@@ -326,7 +365,7 @@ rm(partition)
 ```{r Check Splitting, eval=TRUE, echo=TRUE}
 for (i in c("trn_img","tst_img","trn_cls","tst_cls")) {
     j <- get(i)
-    GetAttributes(j, i)
+    get_ObjectAttributes(j, i)
 }
 rm(i,j)
 ```
@@ -421,7 +460,7 @@ InstantiateNetwork <- function(input=50, hidden=c(30,20,10), output=10) {
         } else if (layer=="output") {
             model[[layer]][["nodz"]] = output
         } else {
-            layer_index = str_sub(layer, -1) %>% IsWhole()
+            layer_index = layer %>% as.numeric()
             model[[layer]][["nodz"]] = hidden[layer_index]
         }
         
@@ -444,12 +483,13 @@ network_model <- InstantiateNetwork(
 
 ## Weight Initialisation
 
-```{r Add Nodes, eval=TRUE, echo=TRUE}
+```{r Weight Initialisation, eval=TRUE, echo=TRUE}
 InitialiserXavier <- function(nodes_in, nodes_out, order=6) {
     #' @title Xavier Initialisation
     #' @description Initialise the weights based on Xavier initialisation
     #' @note Add a note for the developer.
-    #' @references 
+    #' @references https://towardsdatascience.com/weight-initialization-in-neural-networks-a-journey-from-the-basics-to-kaiming-954fb9b47c79
+    #' @references http://proceedings.mlr.press/v9/glorot10a/glorot10a.pdf
     #' @param nodes_in integer. The number of nodes coming in to this layer (ie. number of nodes in previous layer).
     #' @param nodes_out integer. The number of nodes outgoing from this layer (ie. number of nodes in this layer).
     #' @param order integer. The order of magnitude for this equation. Defaults to `6`.
@@ -474,7 +514,8 @@ InitialiserHe <- function(nodes_in, order=2) {
     #' @title He Initialisation
     #' @description Initialise the weights based on Xavier initialisation
     #' @note Add a note for the developer.
-    #' @references
+    #' @references https://towardsdatascience.com/weight-initialization-in-neural-networks-a-journey-from-the-basics-to-kaiming-954fb9b47c79
+    #' @references http://proceedings.mlr.press/v9/glorot10a/glorot10a.pdf
     #' @param nodes_in integer. The number of nodes coming in to this layer (ie. number of nodes in previous layer).
     #' @param order integer. The order of magnitude for this equation. Defaults to `6`.
     #' @return A floating point number.
@@ -494,9 +535,330 @@ InitialiserHe <- function(nodes_in, order=2) {
 }
 ```
 
+## Layer Initialisation
+
+```{r Layer Initialisation, eval=TRUE, echo=TRUE}
+InitialiseLayer <- function(network_model, layer_index, initialisation_algorithm=NA, initialisation_order=2) {
+    #' @title Initialise Layer
+    #' @description Update the weights and biases of a given layer
+    #' @note Defaults the initialisation algorithm to the Xavier Initialisation.
+    #' @param network_model list. The model to be updated.
+    #' @param layer_index integer. The layer to be updated.
+    #' @param initialisation_algorithm string. The algorithm to be used for initialisation (eg. `xavier` or `he`).
+    #' @param initialisation_order integer. The order of magnitude for the initialisation (can be either an integer, or set to the number of layers defined).
+    #' @return The updated model, with the relevant layer updated.
+    #' @author chrimaho
+    
+    # Validations
+    assert_that(is_list(network_model))
+    assert_that(IsWhole(layer_index))
+    assert_that(initialisation_algorithm %in% c("xavier", "he", NA), msg="'initialisation_algorithm' must be one of 'xavier', 'he', or 'NA'.")
+    assert_that(IsWhole(initialisation_order))
+    
+    # Get layer names
+    layer_prev <- names(network_model)[layer_index-1]
+    layer <- names(network_model)[layer_index]
+    
+    # Get number of nodes
+    if (layer_index == 1) {
+        nodes_in <- 0 #The first layer is the 'input' layer; therefore, there are 0 nodes feeding in to it.
+    } else {
+        nodes_in <- network_model %>% extract2(layer_prev) %>% extract2("nodz")
+    }
+    nodes_out <- network_model %>% extract2(layer) %>% extract2("nodz")
+    
+    # Initialise weight matrix
+    w_matrix <- matrix(
+        data=rnorm(nodes_in * nodes_out), 
+        nrow=nodes_in,
+        ncol=nodes_out
+    )
+    
+    # Scale weights
+    if (layer_index != 1) {
+        if (initialisation_algorithm == "xavier") {
+            w_matrix <- w_matrix * InitialiserXavier(nodes_in, nodes_out, order=initialisation_order)
+        } else if (initialisation_algorithm == "he") {
+            w_matrix <- w_matrix * InitialiserHe(nodes_in, order=initialisation_order)
+        } else {
+            w_matrix <- w_matrix
+        }
+    }
+    
+    # Initialise bias matrix
+    b_matrix <- matrix(
+        data=network_model %>% extract2(layer) %>% extract2("nodz") %>% replicate(0),
+        nrow=network_model %>% extract2(layer) %>% extract2("nodz"),
+        ncol=1
+    )
+    
+    # Place data back in to the model
+    network_model[[layer]][["wgts"]] <- w_matrix
+    network_model[[layer]][["bias"]] <- b_matrix
+    
+    # Return
+    return(network_model)
+}
+```
+
+## Model Initialisation
+
+```{r Model Initialisation, eval=TRUE, echo=TRUE, warning=FALSE}
+InitialiseModel <- function(network_model, initialisation_algorithm="xavier", initialisation_order="layers") {
+    #' @title Initialise Model
+    #' @description Initialise each layer in the model.
+    #' @note 
+    #' @param network_model list. The model to be initialised.
+    #' @param initialisation_algorithm string. The initialisation algorithm to be used.
+    #' @param initialisation_order string or integer. The order of magnitude for the initialisation (either integer or set to the number of layers defined) 
+    #' @return The initialised model.
+    #' @author chrimaho
+    
+    # Validations
+    assert_that(is_list(network_model))
+    assert_that(initialisation_algorithm %in% c("xavier", "he", NA), msg="'initialisation_algorithm' must be one of 'xavier', 'he', or 'NA'.")
+    assert_that(or(IsWhole(initialisation_order), is.string(initialisation_order)), msg="'initialisation_order' must be either type 'integer' or 'string'.")
+    
+    # Redefine 'initialisation_order'
+    if (initialisation_order == "layers") {
+        initialisation_order <- get_CountOfElementsWithCondition(names(network_model), function(x){IsWhole(as.numeric(x))})
+    }
+    
+    # Initialise each layer
+    for (layer_index in 1:length(names(network_model))) {
+        network_model <- InitialiseLayer(
+            network_model=network_model, 
+            layer_index=layer_index, 
+            initialisation_algorithm=initialisation_algorithm,
+            initialisation_order=initialisation_order
+        )
+    }
+    
+    # Return
+    return(network_model)
+}
+```
+
+For this, the custom function `get_CountOfElementsWithCondition()` is used. The source code for the function can be found [here]().
+
+## RUN
+
+```{r Run the Setup, eval=TRUE, echo=TRUE}
+network_model <- InitialiseModel(network_model)
+```
+
+# Forward Propogation
+
+## The Theory
+
+Check: [Matrix Manipulation](http://matrixmultiplication.xyz/)
+
+$$
+
+Multiply\ Matrices:
+
+\begin{bmatrix}
+1 &  9 & 17\\
+2 & 10 & 18\\
+3 & 11 & 19\\
+4 & 12 & 20\\
+5 & 13 & 21\\
+6 & 14 & 22\\
+7 & 15 & 23\\
+8 & 16 & 24\\
+\end{bmatrix}
+
+\times
+
+\begin{bmatrix}
+1 & 4 & 7 & 10 & 13\\
+2 & 5 & 8 & 11 & 14\\
+3 & 6 & 9 & 12 & 15\\
+\end{bmatrix}
+
+=
+
+\begin{bmatrix}
+ 70 & 151 & 232 & 313 & 394\\
+ 76 & 166 & 256 & 346 & 436\\
+ 82 & 181 & 280 & 379 & 478\\
+ 88 & 196 & 304 & 412 & 520\\
+ 94 & 211 & 328 & 445 & 562\\
+100 & 226 & 352 & 478 & 604\\
+106 & 241 & 376 & 511 & 646\\
+112 & 256 & 400 & 544 & 688\\
+\end{bmatrix}
+
+\\
+
+Add\ Biases:
+
+\begin{bmatrix}
+ 70 & 151 & 232 & 313 & 394\\
+ 76 & 166 & 256 & 346 & 436\\
+ 82 & 181 & 280 & 379 & 478\\
+ 88 & 196 & 304 & 412 & 520\\
+ 94 & 211 & 328 & 445 & 562\\
+100 & 226 & 352 & 478 & 604\\
+106 & 241 & 376 & 511 & 646\\
+112 & 256 & 400 & 544 & 688\\
+\end{bmatrix}
+
++
+
+\begin{bmatrix}
+1\\
+2\\
+3\\
+4\\
+5\\
+6\\
+7\\
+8\\
+\end{bmatrix}
+
+=
+
+\begin{bmatrix}
+ 71 & 152 & 233 & 314 & 395\\
+ 78 & 168 & 258 & 348 & 438\\
+ 85 & 184 & 283 & 382 & 481\\
+ 92 & 200 & 308 & 416 & 524\\
+ 99 & 216 & 333 & 450 & 567\\
+106 & 232 & 358 & 484 & 610\\
+113 & 248 & 383 & 518 & 653\\
+120 & 264 & 408 & 552 & 696\\
+\end{bmatrix}
+
+\\
+
+Apply\ Activation:
+
+\begin{bmatrix}
+ 71 & 152 & 233 & 314 & 395\\
+ 78 & 168 & 258 & 348 & 438\\
+ 85 & 184 & 283 & 382 & 481\\
+ 92 & 200 & 308 & 416 & 524\\
+ 99 & 216 & 333 & 450 & 567\\
+106 & 232 & 358 & 484 & 610\\
+113 & 248 & 383 & 518 & 653\\
+120 & 264 & 408 & 552 & 696\\
+\end{bmatrix}
+
+\times
+
+\delta
+
+=
+
+\begin{bmatrix}
+ 50.41 & 231.04 &  542.89 &  985.96 & 1560.25\\
+ 60.84 & 282.24 &  665.64 & 1211.04 & 1918.44\\
+ 72.25 & 338.56 &  800.89 & 1459.24 & 2313.61\\
+ 84.64 & 400.00 &  948.64 & 1730.56 & 2745.76\\
+ 98.01 & 466.56 & 1108.89 & 2025.00 & 3214.89\\
+112.36 & 538.24 & 1281.64 & 2342.56 & 3721.00\\
+127.69 & 615.04 & 1466.89 & 2683.24 & 4264.09\\
+144.00 & 696.96 & 1664.64 & 3047.04 & 4844.16\\
+\end{bmatrix}
+
+$$
+
 ```{r}
-is.numeric(as.numeric("1"))
-names(network_model) %>% str_remove_all("hidden_") %>% as.numeric() %>% DescTools::IsWhole()
-assert_that(all(DescTools::IsWhole(c(100,75,50,30,20))))
+mat_a <- matrix(1:24, 8, 3, byrow=TRUE)
+mat_a
+
+mat_b <- matrix(1:15, 3, 5, byrow=TRUE)
+mat_b
+
+mat_c <- mat_a %*% mat_b
+mat_c
+
+mat_d <- matrix(1:8, 8, 1)
+mat_d
+
+mat_e <- sweep(mat_c, 1, mat_d, "+")
+mat_e
+
+mat_f <- mat_e*(0.01*mat_e)
+mat_f
+```
+
+## Linear Component
+
+```{r}
+LinearForward <- function(inpt, wgts, bias) {
+    
+    linr <- wgts %*% inpt
+    linr <- sweep(linr, 1, bias, "+")
+    return(linr)
+    
+}
+```
+
+## Non-Linear Component
+
+Check: [Activation Functions](https://www.desmos.com/calculator/rhx5tl8ygi)
+
+```{r}
+sigmoid <- function(z) {
+    # References:
+    # https://kite.com/python/answers/how-to-calculate-a-logistic-sigmoid-function-in-python
+    # https://www.geeksforgeeks.org/implement-sigmoid-function-using-numpy/
+    a <- 1/(1+exp(-z))
+    return(a)
+}
+
+relu <- function(z) {
+    # References:
+    # https://medium.com/ai%C2%B3-theory-practice-business/a-beginners-guide-to-numpy-with-sigmoid-relu-and-softmax-activation-functions-25b840a9a272
+    a <- max(z, 0)
+    return(a)
+}
+
+softmax <- function(z) {
+    # Reference: 
+    # https://medium.com/ai%C2%B3-theory-practice-business/a-beginners-guide-to-numpy-with-sigmoid-relu-and-softmax-activation-functions-25b840a9a272
+    expo <- exp(z)
+    expo_sum <- sum(exp(z))
+    a <- expo/expo_sum
+    return(a)
+}
+
+swish <- function(z, beta=0.1) {
+    # References: 
+    # https://arxiv.org/pdf/1710.05941.pdf
+    # https://www.bignerdranch.com/blog/implementing-swish-activation-function-in-keras/
+    a <- z * (beta*z)
+    return(a)
+}
+
+```
+
+## Forward Prop
+
+```{r}
+ForwardProp <- function(data_in, network_model, activation_hidden="relu", activation_final="sigmoid") {
+    # Validations
+    assert_that(is.array(data_in))
+    assert_that(is.list(network_model))
+    assert_that(names(network_model)[1]=="input")
+    assert_that(rev(names(network_model))[1]=="output")
+    for (name in names(network_model)) {
+        if (!name %in% c("input","output")) {
+            assert_that(IsWhole(as.numeric(name)))
+        }
+    }
+    assert_that(is.string(activation_hidden))
+    assert_that(is.string(activation_final))
+    assert_that(activation_hidden %in% c("sigmoid","relu","softmax","swish"))
+    assert_that(activation_final %in% c("sigmoid","relu","softmax","swish"))
+    
+    
+    
+}
+names(network_model)
+names(network_model)[1]
+rev(names(network_model))[1]
 ```
 
