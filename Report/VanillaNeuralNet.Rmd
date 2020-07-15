@@ -997,8 +997,90 @@ DifferentiateLinear <- function(back_linr_curr, acti_prev, wgts, bias) {
     
     samp <- dim(acti_prev)[2]
     
-    diff_wgts <- 1/samp * aper
+    diff_wgts <- 1/samp * (back_linr_curr %*% t(acti_prev))
+    diff_bias <- 1/samp * colSums(back_linr_curr, dims=1)
+    diff_acti_prev <- wgts %*% back_linr_curr
+    
+    list_linr <- list(
+        diff_acti_prev, 
+        diff_wgts, 
+        diff_bias
+    )
+    
+    return(list_linr)
     
 }
+```
+
+```{r}
+relu_backward <- function(diff_acti_curr, linr_curr) {
+    diff_linr_curr <- diff_acti_curr
+    diff_linr_curr[linr_curr<=0] <- 0
+    return(diff_linr_curr)
+}
+
+sigmoid_backward <- function(diff_acti_curr, linr_curr) {
+    temp <- 1/(1+exp(-linr_curr))
+    diff_linr_curr <- diff_acti_curr * temp * (1-temp)
+    return(diff_linr_curr)
+}
+```
+
+```{r}
+BackwardProp <- function(network_model) {
+    
+    # Loop through each layer in reverse order
+    for (layr_indx in network_model %>% names %>% length %>% 1:. %>% rev) {
+        
+        # Get the layer name
+        layr_curr <- network_model %>% names %>% extract(layr_indx)
+        
+        # Skip the 'input' layer
+        if (layr_curr == "input") next
+        
+        # Get the previous layer name
+        layr_prev <- network_model %>% names %>% extract(layr_indx-1)
+        
+        # Set up the variables
+        linr_curr <- network_model[[layr_curr]][["linr"]]
+        wgts_curr <- network_model[[layr_curr]][["wgts"]]
+        bias_curr <- network_model[[layr_curr]][["bias"]]
+        acti_prev <- network_model[[layr_prev]][["acti"]]
+        acti_func_back <- network_model[[layr_curr]][["acti_func"]] %>% paste0("_backward")
+        diff_acti_curr <- network_model[[layr_curr]][["back_acti"]]
+        diff_linr_curr <- NA
+        diff_acti_prev <- NA
+        diff_wgts_curr <- NA
+        diff_bias_curr <- NA
+        
+        # Differentiate activation
+        diff_linr_curr <- get(acti_func_back)(diff_acti_curr, linr_curr)
+        
+        # Differentiate linear
+        list_linr <- DifferentiateLinear(
+            back_linr_curr=diff_linr_curr,
+            acti_prev=acti_prev,
+            wgts=wgts_curr,
+            bias=bias_curr
+        )
+        diff_acti_prev <- list_linr[1]
+        diff_wgts_curr <- list_linr[2]
+        diff_bias_curr <- list_linr[3]
+        
+        # Apply back to model
+        network_model[[layr_curr]][["back_acti"]] <- diff_acti_prev
+        network_model[[layr_curr]][["back_linr"]] <- diff_linr_curr
+        network_model[[layr_curr]][["back_wgts"]] <- diff_wgts_curr
+        network_model[[layr_curr]][["back_bias"]] <- diff_bias_curr
+        
+    }
+    
+    return(network_model)
+    
+}
+```
+
+```{r}
+network_model <- BackwardProp(network_model)
 ```
 
