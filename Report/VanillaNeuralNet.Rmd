@@ -98,6 +98,7 @@ library(roxygen2)   #<-- Documentation is important
 library(caret)      #<-- Doing data partitioning
 library(stringi)    #<-- Some string manipulation parts
 library(DescTools)  #<-- The only package that properly checks `is.integer`
+library(tictoc)     #<-- Time how long different processes take
 ```
 
 
@@ -373,10 +374,10 @@ rm(i,j)
 ## Reshape Data {#reshapedata}
 
 ```{r Reshape Data, eval=TRUE, echo=TRUE}
-trn_img <- array(trn_img, dim=c(dim(trn_img)[1], prod(dim(trn_img)[2:4]))) %>% t()
-tst_img <- array(tst_img, dim=c(dim(tst_img)[1], prod(dim(tst_img)[2:4]))) %>% t()
-trn_cls <- array(trn_cls, dim=c(1,length(trn_cls)))
-tst_cls <- array(tst_cls, dim=c(1,length(tst_cls)))
+trn_img <- array(trn_img, dim=c(dim(trn_img)[1], prod(dim(trn_img)[2:4])))
+tst_img <- array(tst_img, dim=c(dim(tst_img)[1], prod(dim(tst_img)[2:4])))
+trn_cls <- array(trn_cls, dim=c(1,length(trn_cls))) %>% t()
+tst_cls <- array(tst_cls, dim=c(1,length(tst_cls))) %>% t()
 ```
 
 ```{r Check Data Shapes, eval=TRUE, echo=TRUE}
@@ -475,7 +476,7 @@ InstantiateNetwork <- function(input=50, hidden=c(30,20,10), output=10) {
 network_model <- InstantiateNetwork(
     input=3072, 
     hidden=c(100,75,50,30,20), 
-    output=10
+    output=1
 )
 ```
 
@@ -782,6 +783,8 @@ mat_e
 
 mat_f <- mat_e*(0.01*mat_e)
 mat_f
+
+rm(mat_a, mat_b, mat_c, mat_d, mat_e, mat_f)
 ```
 
 ## Linear Component
@@ -789,8 +792,8 @@ mat_f
 ```{r}
 LinearForward <- function(inpt, wgts, bias) {
     
-    linr <- wgts %*% inpt
-    linr <- sweep(linr, 1, bias, "+")
+    linr <- inpt %*% wgts
+    linr <- sweep(linr, 2, bias, "+")
     return(linr)
     
 }
@@ -812,7 +815,8 @@ sigmoid <- function(z) {
 relu <- function(z) {
     # References:
     # https://medium.com/ai%C2%B3-theory-practice-business/a-beginners-guide-to-numpy-with-sigmoid-relu-and-softmax-activation-functions-25b840a9a272
-    a <- max(z, 0)
+    a <- sapply(z, max, 0) %>% 
+        structure(dim=dim(z))
     return(a)
 }
 
@@ -839,26 +843,162 @@ swish <- function(z, beta=0.1) {
 
 ```{r}
 ForwardProp <- function(data_in, network_model, activation_hidden="relu", activation_final="sigmoid") {
+    
     # Validations
     assert_that(is.array(data_in))
     assert_that(is.list(network_model))
     assert_that(names(network_model)[1]=="input")
     assert_that(rev(names(network_model))[1]=="output")
+    assert_that(is.string(activation_hidden))
+    assert_that(is.string(activation_final))
+    assert_that(activation_hidden %in% c("sigmoid","relu","softmax","swish"))
+    assert_that(activation_final %in% c("sigmoid","relu","softmax","swish"))
     for (name in names(network_model)) {
         if (!name %in% c("input","output")) {
             assert_that(IsWhole(as.numeric(name)))
         }
     }
-    assert_that(is.string(activation_hidden))
-    assert_that(is.string(activation_final))
-    assert_that(activation_hidden %in% c("sigmoid","relu","softmax","swish"))
-    assert_that(activation_final %in% c("sigmoid","relu","softmax","swish"))
     
+    # Do work
+    for (index in 1:length(names(network_model))) {
+        
+        # Define layer name
+        layr <- names(network_model)[index]
+        
+        if (layr=="input") {
+            
+            # Pass-thru for 'input' layer
+            network_model[[layr]][["inpt"]] <- data_in
+            network_model[[layr]][["acti"]] <- data_in
+            
+        } else {
+            
+            # Extract data
+            prev <- names(network_model)[index-1]
+            inpt <- network_model[[prev]][["acti"]]
+            wgts <- network_model[[layr]][["wgts"]]
+            bias <- network_model[[layr]][["bias"]]
+            
+            # Calculate
+            linr <- LinearForward(inpt, wgts, bias)
+            
+            # Activate
+            if (layr=="output") {
+                acti <- get(activation_final)(linr)
+                network_model[[layr]][["acti_func"]] <- activation_final
+            } else {
+                acti <- get(activation_hidden)(linr)
+                network_model[[layr]][["acti_func"]] <- activation_hidden
+            }
+            
+            # Apply back to our model
+            network_model[[layr]][["inpt"]] <- inpt
+            network_model[[layr]][["linr"]] <- linr
+            network_model[[layr]][["acti"]] <- acti
+            
+        }
+        
+    }
     
+    # Return
+    return(network_model)
+}
+```
+
+## Run
+
+```{r}
+tic()
+network_model <- ForwardProp(trn_img, network_model, "relu", "sigmoid")
+toc()
+```
+
+# Calculate the Cost
+
+## Set Up
+
+```{r}
+ComputeCost <- function(pred, true, epis=1e-10) {
+    
+    # Validations
+    assert_that(is.matrix(pred))
+    assert_that(is.matrix(true))
+    assert_that(is.number(epis))
+    assert_that(epis < 0.0001, msg="'epis' should be a very small epsilom value.")
+    
+    # Get number of samples
+    samp <- length(true)
+    
+    # Instantiate totals
+    total_cost <- 0
+    
+    # Loop for each prediction
+    for (i in 1:samp) {
+        
+        # Adjust for perfect predictions.
+        if (pred[i]==1) pred[i]=pred[i]-epis #pred[i] %<>% subtract(epis)
+        if (pred[i]==0) pred[i]=pred[i]+epis #pred[i] %<>% add(epis)
+        
+        # Calculate totals
+        total_cost <- total_cost - ((true[i] * log(pred[i]) + (1-true[i]) * log(1-pred[i])))
+        
+    }
+    
+    # Take an average
+    cost <- (1/samp) * total_cost
+    
+    # Return
+    return(cost)
     
 }
-names(network_model)
-names(network_model)[1]
-rev(names(network_model))[1]
+```
+
+## Run
+
+```{r}
+# Apply back to the model
+for (layer in names(network_model)) {
+    network_model[[layer]][["cost"]] <- ComputeCost(network_model[["output"]][["acti"]], trn_cls)
+}
+rm(layer)
+```
+
+# Backward Propogation
+
+## Differentiate Cost
+
+### Set
+
+```{r}
+DifferentiateCost <- function(pred, true) {
+    diff_cost <- -(divide_by(true, pred) - divide_by(1-true, 1-pred))
+    return(diff_cost)
+}
+```
+
+### Run
+
+```{r}
+for (layer in names(network_model)) {
+    network_model[[layer]][["back_cost"]] <- DifferentiateCost(network_model[["output"]][["acti"]], trn_cls)
+    if (layer=="output") {
+        network_model[[layer]][["back_acti"]] <- network_model[[layer]][["back_cost"]]
+    }
+}
+rm(layer)
+```
+
+## Differentiate Linear
+
+### Set
+
+```{r}
+DifferentiateLinear <- function(back_linr_curr, acti_prev, wgts, bias) {
+    
+    samp <- dim(acti_prev)[2]
+    
+    diff_wgts <- 1/samp * aper
+    
+}
 ```
 
