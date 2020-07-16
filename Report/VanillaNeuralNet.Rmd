@@ -518,7 +518,7 @@ InitialiserHe <- function(nodes_in, order=2) {
     #' @references https://towardsdatascience.com/weight-initialization-in-neural-networks-a-journey-from-the-basics-to-kaiming-954fb9b47c79
     #' @references http://proceedings.mlr.press/v9/glorot10a/glorot10a.pdf
     #' @param nodes_in integer. The number of nodes coming in to this layer (ie. number of nodes in previous layer).
-    #' @param order integer. The order of magnitude for this equation. Defaults to `6`.
+    #' @param order integer. The order of magnitude for this equation. Defaults to `2`.
     #' @return A floating point number.
     #' @author chrimaho
     
@@ -936,6 +936,8 @@ ComputeCost <- function(pred, true, epis=1e-10) {
     for (i in 1:samp) {
         
         # Adjust for perfect predictions.
+        pred <<- pred
+        i <<- i
         if (pred[i]==1) {pred[i] <- pred[i]-epis} #pred[i] %<>% subtract(epis)
         if (pred[i]==0) {pred[i] <- pred[i]+epis} #pred[i] %<>% add(epis)
         
@@ -1142,7 +1144,7 @@ network_model <- UpdateModel(network_model, 0.01)
 TrainModel <- function(x_train, y_train,
                        input_nodes=dim(x_train)[2], hidden_nodes=c(100, 50, 10), output_nodes=1,
                        initialisation_algorithm="xavier", initialisation_order="layers",
-                       epochs=500, learning_rate=0.01,
+                       epochs=500, learning_rate=0.001,
                        activation_hidden="relu", activation_final="sigmoid",
                        verbosity=NA
                        ) {
@@ -1201,7 +1203,7 @@ TrainModel <- function(x_train, y_train,
         # Update parameters
         network_model <- UpdateModel(
             network_model=network_model, 
-            learning_rate=0.01
+            learning_rate=learning_rate
         )
         
     }
@@ -1215,7 +1217,7 @@ network_model <- TrainModel(
     x_train=trn_img, y_train=trn_cls,
     input_nodes=dim(trn_img)[2], hidden_nodes=c(100,75,50,30,20), output_nodes=1,
     initialisation_algorithm="xavier", initialisation_order="layers",
-    epochs=20, learning_rate=0.01,
+    epochs=20, learning_rate=0.001,
     activation_hidden="relu", activation_final="sigmoid",
     verbosity=1
 )
