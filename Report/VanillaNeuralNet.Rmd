@@ -101,6 +101,18 @@ library(DescTools)  #<-- The only package that properly checks `is.integer`
 library(tictoc)     #<-- Time how long different processes take
 ```
 
+```{r Set Defaults, eval=TRUE, echo=FALSE}
+# Set Default themes
+theme_set(theme_bw())
+theme_update(plot.title = element_text(hjust=0.5)
+            ,plot.subtitle = element_text(hjust=0.5)
+            )
+
+# Set Default rounding length
+options(digits = 4)
+options(scipen = 999)
+```
+
 
 ```{r Load Custom Functions, eval=TRUE, echo=FALSE}
 str_Format <- function(string, ...) {
@@ -842,7 +854,7 @@ swish <- function(z, beta=0.1) {
 ## Forward Prop
 
 ```{r}
-ForwardProp <- function(data_in, network_model, activation_hidden="relu", activation_final="sigmoid") {
+ForwardProp <- function(network_model, data_in, activation_hidden="relu", activation_final="sigmoid") {
     
     # Validations
     assert_that(is.array(data_in))
@@ -909,7 +921,7 @@ ForwardProp <- function(data_in, network_model, activation_hidden="relu", activa
 
 ```{r}
 tic()
-network_model <- ForwardProp(trn_img, network_model, "relu", "sigmoid")
+network_model <- ForwardProp(network_model, trn_img, "relu", "sigmoid")
 toc()
 ```
 
@@ -1140,6 +1152,8 @@ network_model <- UpdateModel(network_model, 0.01)
 
 # Run the model
 
+## Set Up
+
 ```{r}
 TrainModel <- function(x_train, y_train,
                        input_nodes=dim(x_train)[2], hidden_nodes=c(100, 50, 10), output_nodes=1,
@@ -1148,6 +1162,15 @@ TrainModel <- function(x_train, y_train,
                        activation_hidden="relu", activation_final="sigmoid",
                        verbosity=NA
                        ) {
+    
+    # Set return values
+    output <- list(
+        network_model=network_model,
+        results=list(
+            cost=vector()
+            # Open to add future results features, such as accuracy or specificity.
+        )
+    )
     
     # Instantiate
     network_model <- InstantiateNetwork(
@@ -1168,8 +1191,8 @@ TrainModel <- function(x_train, y_train,
         
         # Forward Prop
         network_model <- ForwardProp(
-            data_in=x_train, 
             network_model=network_model, 
+            data_in=x_train, 
             activation_hidden=activation_hidden, 
             activation_final=activation_final
         )
@@ -1190,12 +1213,14 @@ TrainModel <- function(x_train, y_train,
             }
         }
         
+        # Save cost
+        output[["results"]][["cost"]] %<>% c(cost)
+        
         # Differentiate cost
         network_model <- ApplyDifferentiateCost(
             network_model=network_model, 
             DifferentiateCost(network_model[["output"]][["acti"]], y_train)
         )
-        network_model <<- network_model
         
         # Backprop
         network_model <- BackwardProp(network_model)
@@ -1208,22 +1233,145 @@ TrainModel <- function(x_train, y_train,
         
     }
     
-    return(network_model)
+    output[["network_model"]] <- network_model
+    
+    return(output)
 }
 ```
 
-```{r}
-network_model <- TrainModel(
+## Run `Xavier`
+
+```{r, fig.width=15, fig.height=8}
+training_output <- TrainModel(
     x_train=trn_img, y_train=trn_cls,
     input_nodes=dim(trn_img)[2], hidden_nodes=c(100,75,50,30,20), output_nodes=1,
     initialisation_algorithm="xavier", initialisation_order="layers",
-    epochs=20, learning_rate=0.001,
+    epochs=500, learning_rate=0.001,
     activation_hidden="relu", activation_final="sigmoid",
-    verbosity=1
+    verbosity=50
 )
+
+network_model <- training_output[["network_model"]]
+training_cost <- training_output[["results"]][["cost"]]
+
+training_cost %>% 
+    data.frame(cost=.) %>% 
+    rowid_to_column("epoch") %>% 
+    ggplot() +
+    geom_line(aes(epoch,cost)) +
+    coord_cartesian(ylim=c(0,1))
+```
+
+## Run `He`
+
+```{r, fig.width=15, fig.height=8}
+training_output <- TrainModel(
+    x_train=trn_img, y_train=trn_cls,
+    input_nodes=dim(trn_img)[2], hidden_nodes=c(100,75,50,30,20), output_nodes=1,
+    initialisation_algorithm="he", initialisation_order=2,
+    epochs=500, learning_rate=0.001,
+    activation_hidden="relu", activation_final="sigmoid",
+    verbosity=50
+)
+
+network_model <- training_output[["network_model"]]
+training_cost <- training_output[["results"]][["cost"]]
+
+training_cost %>% 
+    data.frame(cost=.) %>% 
+    rowid_to_column("epoch") %>% 
+    ggplot() +
+    geom_line(aes(epoch,cost)) +
+    coord_cartesian(ylim=c(0,1))
+```
+
+
+
+$$ \begin{bmatrix} `r matrix(1:12, ncol=3)` \end{bmatrix} $$
+
+```{r, fig.width=15, fig.height=8}
+training_output <- TrainModel(
+    x_train=trn_img, y_train=trn_cls,
+    input_nodes=dim(trn_img)[2], hidden_nodes=c(1000,500,100,50,1), output_nodes=1,
+    initialisation_algorithm="he", initialisation_order=2,
+    epochs=500, learning_rate=0.001,
+    activation_hidden="relu", activation_final="sigmoid",
+    verbosity=50
+)
+
+network_model <- training_output[["network_model"]]
+training_cost <- training_output[["results"]][["cost"]]
+
+training_cost %>% 
+    data.frame(cost=.) %>% 
+    rowid_to_column("epoch") %>% 
+    ggplot() +
+    geom_line(aes(epoch,cost)) +
+    coord_cartesian(ylim=c(0,1))
+```
+
+# Predict
+
+## Set Up
+
+```{r}
+get_Prediction <- function(x_test, y_test, network_model) {
+    
+    predic <- ForwardProp(
+        network_model=network_model, 
+        data_in=x_test, 
+        activation_hidden="relu", 
+        activation_final="sigmoid"
+    )
+    
+    probas <- predic[["output"]][["acti"]]
+    
+    result <- data.frame(
+        probs=probas,
+        truth=y_test
+    )
+    result %<>% mutate(class=ifelse(probas>0.5, 1, 0))
+    
+    return(result)
+    
+}
+```
+
+```{r, fig.width=6, fig.height=5}
+
+library(ROCR)
+pred <- get_Prediction(tst_img, tst_cls, network_model)
+pred <- prediction(pred$probs, pred$truth)
+rocr <- performance(pred, measure="tpr", x.measure="fpr")
+plot(rocr)
+
+library(plotROC)
+get_Prediction(tst_img, tst_cls, network_model) %>% 
+    ggplot(aes(m=probs, d=truth)) +
+    geom_roc(n.cuts=0) +
+    style_roc(theme=theme_grey)
+
+get_Prediction(tst_img, tst_cls, network_model) %>% select(truth, class) %>% distinct()
+    caret::confusionMatrix(data=.["class"], reference=.["truth"])
 ```
 
 ```{r}
-dim(trn_img)
+network_model[["output"]][["acti"]] %>% 
+    (function(x){
+        print(min(x))
+        print(max(x))
+        print(mean(x))
+        hist(x)
+        print(sum(x>0.5))
+    })
+get_Prediction(tst_img, tst_cls, network_model) %>% 
+    select(truth) %>% pull() %>% 
+    (function(x){
+        print(min(x))
+        print(max(x))
+        print(mean(x))
+        hist(x)
+        print(sum(x>0.5))
+    })
 ```
 
