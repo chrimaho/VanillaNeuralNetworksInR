@@ -181,7 +181,6 @@ is.integer <- function(value) {
     #' @note The `DescTools::IsWhole()` is the only package that genuinely works on integer values. Other functions such as `base::is.integer()` and `purrr::is_integer()` do not work properly...
     #' @param value `numeric`. The value to be checked.
     #' @return A logical value confirming if `value` is an integer or not.
-    #' @seealso 
     #' @author chrimaho
     #' @examples
     #' # Works
@@ -899,7 +898,6 @@ get_DifferentiateCost <- function(pred=NA, true=NA) {
     #' @param pred `matrix`. The matrix of predicted values.
     #' @param true `matrix`. The matrix of true values.
     #' @return A floating point vlue.
-    #' @seealso 
     #' @author chrimaho
     #' @examples
     #' # Works
@@ -974,7 +972,6 @@ get_DifferentiateLinear <- function(back_linr_curr, acti_prev, wgts, bias) {
     #' @param wgts `matrix`. The weights matrix of the current layer.
     #' @param bias `matrix`. The bias matrix of the current layer.
     #' @return A list of three matrices. 1) `diff_acti_prev`: The differentiated activation matrix of the previous layer; 2) `diff_wgts`: The differentiated weights matrix of the current layer; 3) `diff_bias`: The differentiated bias matrix of the current layer.
-    #' @seealso 
     #' @author chrimaho
     #' @examples
     #' # Works
@@ -1030,7 +1027,6 @@ let_BackwardActivateRelu <- function(diff_acti_curr, linr_curr) {
     #' @param diff_acti_curr `matrix`. The differentiated activation matrix of the current layer.
     #' @param linr_curr `matrix`. The linear algebra matrix in the current layer.
     #' @return The differentiated linear algebra matrix of the current layer.
-    #' @seealso 
     #' @author chrimaho
     #' @examples
     #' # Works
@@ -1092,7 +1088,6 @@ set_BackwardProp <- function(network_model) {
     #' @note Skips the `input` layer, because that doesn't need to be back-propagated. Also, it runs through each layer in reverse; in the same way that the `set_ForwardProp()` function works from start to end, the `set_BackwardProp()` function works from end to start.
     #' @param network_model `list`. The model to run back-propagation over.
     #' @return The same `network_model`, but having had back-propagation applied to it.
-    #' @seealso 
     #' @author chrimaho
     #' @examples
     #' # Works
@@ -1170,7 +1165,6 @@ set_UpdateModel <- function(network_model, learning_rate=0.001) {
     #' @param network_model `list`. The network model to be updated.
     #' @param learning_rate `number`. The learning rate that the parameters should be updated by. It should be a small decimal number. Default value `0.001`.
     #' @return The same `network_model`, after having the parameters (`wgts` & `bias`) updated.
-    #' @seealso 
     #' @author chrimaho
     #' @examples
     #' # Works
@@ -1241,7 +1235,6 @@ let_TrainModel <- function(x_train, y_train,
     #' @param activation_final `string`.
     #' @param verbosity `integer` or `NA`.
     #' @return A list containing the `results`, and the final trained `network_model`.
-    #' @seealso 
     #' @author chrimaho
     #' @examples
     #' # Works
@@ -1365,7 +1358,6 @@ get_Prediction <- function(x_test, y_test, network_model, threshold=0.5) {
     #' @param network_model `list`. The trained network_model.
     #' @param threshold `number`. A single value between `0` & `1` that is the threshold for the predicted probabilities.
     #' @return A `data.frame` with three columns: 1) `probs`: The Probability value of each of the labels, and is the same length as `y_test`; 2) `truth`: The true labels, the exact same vector as `y_test`; 3) `class`: The class of values, defined at a given cutoff value.
-    #' @seealso 
     #' @author chrimaho
     #' @examples
     #' # Works
