@@ -171,7 +171,7 @@ get_ObjectAttributes <- function(object, name=deparse(substitute(object))) {
     )
     
     # Return
-    return(output)
+    return(output %>% paste0("\n"))
 }
 
 
@@ -227,7 +227,7 @@ set_MakeImage <- function(image, index=1) {
     
     # Validations
     assert_that(image %>% is.array, msg="'image' must be type 'array'.")
-    assert_that(image %>% dim %>% length == 4, msg="'image' must have 4 dimensions.")
+    assert_that(image %>% dim %>% length == 3, msg="'image' must have 4 dimensions.")
     assert_that(index %>% is.integer, msg="'index' must be type 'integer'.")
     
     # Extract elements
@@ -283,7 +283,7 @@ plt_PlotImage <- function(images, classes, index=1) {
     # Plot image
     plot.new()
     lim <- par()
-    rasterImage(img, lim$usr[1], lim$usr[3], lim$usr[2], lim$usr[4], interpolate=FALSE)
+    rasterImage(image, lim$usr[1], lim$usr[3], lim$usr[2], lim$usr[4], interpolate=FALSE)
     title(lbl, font.main=2)
     
     # Return
@@ -506,21 +506,38 @@ set_InitialiseLayer <- function(network_model, layer_index, initialisation_algor
     return(network_model)
 }
 
-
-InitialiseModel <- function(network_model, initialisation_algorithm="xavier", initialisation_order="layers") {
+set_InitialiseModel <- function(network_model, initialisation_algorithm="xavier", initialisation_order="layers") {
     #' @title Initialise Model
-    #' @description Initialise each layer in the model.
-    #' @note 
-    #' @param network_model list. The model to be initialised.
-    #' @param initialisation_algorithm string. The initialisation algorithm to be used.
-    #' @param initialisation_order string or integer. The order of magnitude for the initialisation (either integer or set to the number of layers defined) 
-    #' @return The initialised model.
+    #' @description Initialise the model with all the necessary weights and biases.
+    #' @note Add a note for the developer.
+    #' @param network_model `list`. The model to be initialised.
+    #' @param initialisation_algorithm `string`. The initialisation algorithm to use for the weights. If `NA`, then will use the values from an `rnorm()` function. Default value `"xavier"`.
+    #' @param initialisation_order `integer` or `string`. The order of magnitude for the initialisation algorithm. Should be a number (ideally less than `10`), or the word `layers`, which will automatically calculate the order based in the number of hidden layers in the model. Default value `"layers"`.
+    #' @return The `network_model`, with all layers having been initialised.
     #' @author chrimaho
+    #' @examples
+    #' # Works
+    #' set_InitialiseModel(
+    #'     network_model,
+    #'     initialisation_algorithm="xavier",
+    #'     initialisation_order="layers"
+    #' )
+    
+    # Packages
+    require(assertthat)
     
     # Validations
-    assert_that(is_list(network_model))
-    assert_that(initialisation_algorithm %in% c("xavier", "he", NA), msg="'initialisation_algorithm' must be one of 'xavier', 'he', or 'NA'.")
-    assert_that(or(IsWhole(initialisation_order), is.string(initialisation_order)), msg="'initialisation_order' must be either type 'integer' or 'string'.")
+    assert_that(network_model %>% is.list, msg="'network_model' must be type 'list'.")
+    assert_that(or(is.string(initialisation_algorithm), is.na(initialisation_algorithm)), msg="'initialisation_algorithm' must be type 'string' or value 'NA'.")
+    assert_that(initialisation_algorithm %in% c("xavier","he",NA), msg="'initialisation_algorithm' must be one of 'xavier', 'he', or 'NA'.")
+    assert_that(or(is.numeric(initialisation_order), is.string(initialisation_order)), msg="'initialisation_order' must be type 'integer' or 'string'.")
+    assert_that(network_model %>% names %>% extract(1) == "input", msg="The first layer of 'network_model' must be 'input'.")
+    assert_that(network_model %>% names %>% rev %>% extract(1) == "output", msg="The last layer of 'network_model' must be 'output'.")
+    for (name in network_model %>% names) {
+        if (!name %in% c("input","output")) {
+            assert_that(name %>% as.numeric %>% is.integer, msg="Each hidden layer in 'network_model' must be an integer value.")
+        }
+    }
     
     # Redefine 'initialisation_order'
     if (initialisation_order == "layers") {
@@ -529,7 +546,7 @@ InitialiseModel <- function(network_model, initialisation_algorithm="xavier", in
     
     # Initialise each layer
     for (layer_index in 1:length(names(network_model))) {
-        network_model <- InitialiseLayer(
+        network_model <- set_InitialiseLayer(
             network_model=network_model, 
             layer_index=layer_index, 
             initialisation_algorithm=initialisation_algorithm,
@@ -541,58 +558,197 @@ InitialiseModel <- function(network_model, initialisation_algorithm="xavier", in
     return(network_model)
 }
 
-
-sigmoid <- function(z) {
-    # References:
-    # https://kite.com/python/answers/how-to-calculate-a-logistic-sigmoid-function-in-python
-    # https://www.geeksforgeeks.org/implement-sigmoid-function-using-numpy/
-    a <- 1/(1+exp(-z))
-    return(a)
-}
-
-
-relu <- function(z) {
-    # References:
-    # https://medium.com/ai%C2%B3-theory-practice-business/a-beginners-guide-to-numpy-with-sigmoid-relu-and-softmax-activation-functions-25b840a9a272
-    a <- sapply(z, max, 0) %>% 
-        structure(dim=dim(z))
-    return(a)
-}
-
-
-softmax <- function(z) {
-    # Reference: 
-    # https://medium.com/ai%C2%B3-theory-practice-business/a-beginners-guide-to-numpy-with-sigmoid-relu-and-softmax-activation-functions-25b840a9a272
-    expo <- exp(z)
-    expo_sum <- sum(exp(z))
-    a <- expo/expo_sum
-    return(a)
-}
-
-
-swish <- function(z, beta=0.1) {
-    # References: 
-    # https://arxiv.org/pdf/1710.05941.pdf
-    # https://www.bignerdranch.com/blog/implementing-swish-activation-function-in-keras/
-    a <- z * (beta*z)
-    return(a)
-}
-
-
-ForwardProp <- function(network_model, data_in, activation_hidden="relu", activation_final="sigmoid") {
+set_LinearForward <- function(inpt, wgts, bias) {
+    #' @title Linear Forward Algebra
+    #' @description Perform linear algebra on a layer during forward propagation.
+    #' @note Just like finding a gradient (`y=mx+b`), the output of this function takes `inpt * wgts + bias`.
+    #' @note To perform the matrix addition part, the `base::sweep()` function is used, which sweeps a vector linearly across a matrix. In this case we are using the second dimension for this, meaning to say that the bias is swept across each row of the `linr` matrix. And as each row is each node, then this is how the bias is being added.
+    #' @param inpt `matrix`. The input matrix for this layer. This is also the 'activation' from the previous layer. First dimension: Number of nodes in the previous layer. Second dimension: number of images being parsed in to the model.
+    #' @param wgts `matrix`. The weights matrix for this layer. The length of the first dimension of `wgts` MUST equal the length of the second dimension of the `inpt` matrix. First dimension: number of images being parsed in to the model. Second dimension: number of nodes in this layer. 
+    #' @param bias `vector` or single-column `matrix`. The bias for this layer. The length of this element MUST be equal to the second dimension of the `wgts` matrix. In other words, the length of the `bias` element is the number of nodes in this layer.
+    #' @return A `matrix` after performing linear algebra.
+    #' @author chrimaho
+    #' @examples
+    #' # Works
+    #' set_LinearForward(
+    #'     inpt,
+    #'     wgts,
+    #'     bias
+    #' )
+    
+    # Packages
+    require(assertthat)
     
     # Validations
-    assert_that(is.array(data_in))
-    assert_that(is.list(network_model))
-    assert_that(names(network_model)[1]=="input")
-    assert_that(rev(names(network_model))[1]=="output")
-    assert_that(is.string(activation_hidden))
-    assert_that(is.string(activation_final))
-    assert_that(activation_hidden %in% c("sigmoid","relu","softmax","swish"))
-    assert_that(activation_final %in% c("sigmoid","relu","softmax","swish"))
-    for (name in names(network_model)) {
+    assert_that(inpt %>% is.matrix, msg="'inpt' must be type 'matrix'.")
+    assert_that(wgts %>% is.matrix, msg="'wgts' must be type 'matrix'.")
+    assert_that(bias %>% is.matrix, msg="'bias' must be type 'matrix'.")
+    assert_that(wgts %>% dim %>% extract(1) == inpt %>% dim %>% extract(2), msg="The length of the first dimension of 'wgts' MUST equal the length of the second dimension of 'inpt'.")
+    assert_that(bias %>% length == wgts %>% dim %>% extract(2), msg="The length of `bias` MUST equal the length of the second dimension of `wgts`.")
+    
+    # Perform matrix multiplication
+    linr <- inpt %*% wgts
+    
+    # Add bias
+    linr <- sweep(linr, 2, bias, "+")
+    
+    # Return
+    return(linr)
+}
+
+
+set_ActivateSigmoid <- function(linr) {
+    #' @title Sigmoid Activation
+    #' @description Activate a matrix using the Sigmoid algorithm.
+    #' @note The `linr` is the result of running the `set_LinearForward()` function.
+    #' @param linr `matrix`. The matrix to be activated.
+    #' @return An activated matrix.
+    #' @seealso https://kite.com/python/answers/how-to-calculate-a-logistic-sigmoid-function-in-python
+    #' @seealso https://www.geeksforgeeks.org/implement-sigmoid-function-using-numpy/
+    #' @author chrimaho
+    #' @examples
+    #' # Works
+    #' set_ActivateSigmoid(
+    #'     linr
+    #' )
+    
+    # Packages
+    require(assertthat)
+    
+    # Validations
+    assert_that(linr %>% is.matrix, msg="'linr' must be type 'matrix'.")
+    
+    # Do work
+    acti <- 1/(1+exp(-linr))
+    
+    # Return
+    return(acti)
+}
+
+
+set_ActivateRelu <- function(linr) {
+    #' @title ReLU Activation
+    #' @description Activate a matrix using the Relu algorithm.
+    #' @note The `linr` is the result of running the `set_LinearForward()` function.
+    #' @param linr `matrix`. The matrix to be activated.
+    #' @return An activated matrix.
+    #' @seealso https://medium.com/ai%C2%B3-theory-practice-business/a-beginners-guide-to-numpy-with-sigmoid-relu-and-softmax-activation-functions-25b840a9a272
+    #' @author chrimaho
+    #' @examples
+    #' # Works
+    #' set_ActivateRelu(
+    #'     linr
+    #' )
+    
+    # Packages
+    require(assertthat)
+    
+    # Validations
+    assert_that(linr %>% is.matrix, msg="'linr' must be type 'matrix'.")
+    
+    # Do work
+    acti <- sapply(linr, max, 0) %>% 
+        structure(dim=dim(linr))
+    
+    # Return
+    return(acti)
+}
+
+
+set_ActivateSoftmax <- function(linr) {
+    #' @title Softmax Activation
+    #' @description Activate a matrix using the Softmax algorithm.
+    #' @note The `linr` is the result of running the `set_LinearForward()` function.
+    #' @param linr `matrix`. The matrix to be activated.
+    #' @return An activated matrix.
+    #' @seealso https://medium.com/ai%C2%B3-theory-practice-business/a-beginners-guide-to-numpy-with-sigmoid-relu-and-softmax-activation-functions-25b840a9a272
+    #' @author chrimaho
+    #' @examples
+    #' # Works
+    #' set_ActivateSoftmax(
+    #'     linr
+    #' )
+    
+    # Packages
+    require(assertthat)
+    
+    # Validations
+    assert_that(linr %>% is.matrix, msg="'linr' must be type 'matrix'.")
+    
+    # Do work
+    expo <- exp(z)
+    expo_sum <- sum(exp(z))
+    acti <- expo/expo_sum
+    
+    # Return
+    return(acti)
+}
+
+
+set_ActivateSwish <- function(linr, beta=0.1) {
+    #' @title Swish Activation
+    #' @description Activate a matrix using the Swish algorithm.
+    #' @note The `linr` is the result of running the `set_LinearForward()` function.
+    #' @param linr `matrix`. The matrix to be activated.
+    #' @param beta `numeric`. The beta amount to be used.
+    #' @return An activated matrix.
+    #' @seealso https://arxiv.org/pdf/1710.05941.pdf
+    #' @seealso https://www.bignerdranch.com/blog/implementing-swish-activation-function-in-keras/
+    #' @author chrimaho
+    #' @examples
+    #' # Works
+    #' set_ActivateSwish(
+    #'     linr
+    #' )
+    
+    # Packages
+    require(assertthat)
+    
+    # Validations
+    assert_that(linr %>% is.matrix, msg="'linr' must be type 'matrix'.")
+    
+    # Do work
+    acti <- linr * (beta * linr)
+    
+    # Return
+    return(acti)
+}
+
+
+set_ForwardProp <- function(network_model, data_in, activation_hidden="relu", activation_final="sigmoid") {
+    #' @title Run Forward Propagation
+    #' @description Run forward propagation over a model (`network_model`) with a given input data set (`data_in`) and using different activations for the hidden and output layers (`activation_hidden` & `activation_final`).
+    #' @note Add a note for the developer.
+    #' @param network_model `list`. The model to be used. Note, must be instantiated and initialised, after having run the `set_InitialiseModel()` function. Default value `NA`.
+    #' @param data_in `array`. A 4-D array containing the images for propagation. Note, the dimensions must be: `images`x`width`x`height`x`colour`. Default value `NA`.
+    #' @param 
+    #' @return The same `network_model`, after having completed forward propagation.
+    #' @seealso 
+    #' @author chrimaho
+    #' @examples
+    #' # Works
+    #' set_ForwardProp(
+    #'     network_model,
+    #'     data_in,
+    #'     activation_hidden,
+    #'     activation_final
+    #' )
+    
+    # Packages
+    require(assertthat)
+    
+    # Validations
+    assert_that(network_model %>% is.list, msg="'network_model' must be type 'list'.")
+    assert_that(data_in %>% is.array, msg="'data_in' must be type 'array'.")
+    assert_that(is.string(activation_hidden), msg="'activation_hidden' must be type 'string'.")
+    assert_that(is.string(activation_final), msg="'activation_final' must be type 'string'.")
+    assert_that(activation_hidden %in% c("sigmoid","relu","softmax","swish"), msg="'activation_hidden' must be one of: 'sigmoid', 'relu', 'softmax', or 'swish'.")
+    assert_that(activation_final %in% c("sigmoid","relu","softmax","swish"), msg="'activation_final' must be one of: 'sigmoid', 'relu', 'softmax', or 'swish'.")
+    assert_that(network_model %>% names %>% extract(1) == "input", msg="The first layer of 'network_model' must be 'input'.")
+    assert_that(network_model %>% names %>% rev %>% extract(1) == "output", msg="The last layer of 'network_model' must be 'output'.")
+    for (name in network_model %>% names) {
         if (!name %in% c("input","output")) {
-            assert_that(IsWhole(as.numeric(name)))
+            assert_that(name %>% as.numeric %>% is.integer, msg="Each hidden layer in 'network_model' must be an integer value.")
         }
     }
     
@@ -621,10 +777,10 @@ ForwardProp <- function(network_model, data_in, activation_hidden="relu", activa
             
             # Activate
             if (layr=="output") {
-                acti <- get(activation_final)(linr)
+                acti <- get(paste0("set_Activate",str_to_title(activation_final)))(linr)
                 network_model[[layr]][["acti_func"]] <- activation_final
             } else {
-                acti <- get(activation_hidden)(linr)
+                acti <- get(paste0("set_Activate",str_to_title(activation_hidden)))(linr)
                 network_model[[layr]][["acti_func"]] <- activation_hidden
             }
             
