@@ -361,7 +361,7 @@ set_InstantiateNetwork <- function(input=50, hidden=c(30,20,10), output=1) {
     return(model)
 }
 
-set_InitialiseXavier <- function(nodes_in, nodes_out, order=6) {
+let_InitialiseXavier <- function(nodes_in, nodes_out, order=6) {
     #' @title Xavier Initialisation
     #' @description Initialise the weights based on the Xavier algorithm.
     #' @param nodes_in `integer`. The number of nodes coming in to this layer (ie. the number of nodes in the previous layer).
@@ -373,7 +373,7 @@ set_InitialiseXavier <- function(nodes_in, nodes_out, order=6) {
     #' @author chrimaho
     #' @examples
     #' # Works
-    #' set_InitialiseXavier(
+    #' let_InitialiseXavier(
     #'     nodes_in=30,
     #'     nodes_out=20,
     #'     order=6
@@ -396,7 +396,7 @@ set_InitialiseXavier <- function(nodes_in, nodes_out, order=6) {
     return(output)
 }
 
-set_InitialiseHe <- function(nodes_in, nodes_out, order=2) {
+let_InitialiseHe <- function(nodes_in, nodes_out, order=2) {
     #' @title He Initialisation
     #' @description Initialise the weights based on the He initialisation algorithm.
     #' @param nodes_in `integer`. The number of nodes coming in to this layer (ie. number of nodes in previous layer).
@@ -408,7 +408,7 @@ set_InitialiseHe <- function(nodes_in, nodes_out, order=2) {
     #' @author chrimaho
     #' @examples
     #' # Works
-    #' set_InitialiseHe(
+    #' let_InitialiseHe(
     #'     nodes_in=30,
     #'     order=2
     #' )
@@ -479,7 +479,7 @@ set_InitialiseLayer <- function(network_model, layer_index, initialisation_algor
     
     # Get initialisation algorithm
     if (!is.na(initialisation_algorithm)) {
-        algorithm <- paste0("set_Initialise", str_to_title(initialisation_algorithm))
+        algorithm <- paste0("let_Initialise", str_to_title(initialisation_algorithm))
     }
     
     # Scale weights
@@ -597,7 +597,7 @@ set_LinearForward <- function(inpt, wgts, bias) {
 }
 
 
-set_ActivateSigmoid <- function(linr) {
+let_ActivateSigmoid <- function(linr) {
     #' @title Sigmoid Activation
     #' @description Activate a matrix using the Sigmoid algorithm.
     #' @note The `linr` is the result of running the `set_LinearForward()` function.
@@ -608,7 +608,7 @@ set_ActivateSigmoid <- function(linr) {
     #' @author chrimaho
     #' @examples
     #' # Works
-    #' set_ActivateSigmoid(
+    #' let_ActivateSigmoid(
     #'     linr
     #' )
     
@@ -626,7 +626,7 @@ set_ActivateSigmoid <- function(linr) {
 }
 
 
-set_ActivateRelu <- function(linr) {
+let_ActivateRelu <- function(linr) {
     #' @title ReLU Activation
     #' @description Activate a matrix using the Relu algorithm.
     #' @note The `linr` is the result of running the `set_LinearForward()` function.
@@ -636,7 +636,7 @@ set_ActivateRelu <- function(linr) {
     #' @author chrimaho
     #' @examples
     #' # Works
-    #' set_ActivateRelu(
+    #' let_ActivateRelu(
     #'     linr
     #' )
     
@@ -655,7 +655,7 @@ set_ActivateRelu <- function(linr) {
 }
 
 
-set_ActivateSoftmax <- function(linr) {
+let_ActivateSoftmax <- function(linr) {
     #' @title Softmax Activation
     #' @description Activate a matrix using the Softmax algorithm.
     #' @note The `linr` is the result of running the `set_LinearForward()` function.
@@ -665,7 +665,7 @@ set_ActivateSoftmax <- function(linr) {
     #' @author chrimaho
     #' @examples
     #' # Works
-    #' set_ActivateSoftmax(
+    #' let_ActivateSoftmax(
     #'     linr
     #' )
     
@@ -685,7 +685,7 @@ set_ActivateSoftmax <- function(linr) {
 }
 
 
-set_ActivateSwish <- function(linr, beta=0.1) {
+let_ActivateSwish <- function(linr, beta=0.1) {
     #' @title Swish Activation
     #' @description Activate a matrix using the Swish algorithm.
     #' @note The `linr` is the result of running the `set_LinearForward()` function.
@@ -697,7 +697,7 @@ set_ActivateSwish <- function(linr, beta=0.1) {
     #' @author chrimaho
     #' @examples
     #' # Works
-    #' set_ActivateSwish(
+    #' let_ActivateSwish(
     #'     linr
     #' )
     
@@ -719,11 +719,11 @@ set_ForwardProp <- function(network_model, data_in, activation_hidden="relu", ac
     #' @title Run Forward Propagation
     #' @description Run forward propagation over a model (`network_model`) with a given input data set (`data_in`) and using different activations for the hidden and output layers (`activation_hidden` & `activation_final`).
     #' @note Add a note for the developer.
-    #' @param network_model `list`. The model to be used. Note, must be instantiated and initialised, after having run the `set_InitialiseModel()` function. Default value `NA`.
-    #' @param data_in `array`. A 4-D array containing the images for propagation. Note, the dimensions must be: `images`x`width`x`height`x`colour`. Default value `NA`.
-    #' @param 
+    #' @param network_model `list`. The model to be used. Note, must be instantiated and initialised, after having run the `set_InitialiseModel()` function.
+    #' @param data_in `array`. A 4-D array containing the images for propagation. Note, the dimensions must be: `images`x`width`x`height`x`colour`.
+    #' @param activation_hidden `string`. The activation algorithm to use for the hidden layers. Must be one of: 'sigmoid', 'relu', 'softmax', or 'swish'. Default value `relu`.
+    #' @param activation_final `string`. The activation algorithm to use for the final layer. Must be one of: 'sigmoid', 'relu', 'softmax', or 'swish'. Default value `sigmoid`.
     #' @return The same `network_model`, after having completed forward propagation.
-    #' @seealso 
     #' @author chrimaho
     #' @examples
     #' # Works
@@ -777,10 +777,10 @@ set_ForwardProp <- function(network_model, data_in, activation_hidden="relu", ac
             
             # Activate
             if (layr=="output") {
-                acti <- get(paste0("set_Activate",str_to_title(activation_final)))(linr)
+                acti <- get(paste0("let_Activate",str_to_title(activation_final)))(linr)
                 network_model[[layr]][["acti_func"]] <- activation_final
             } else {
-                acti <- get(paste0("set_Activate",str_to_title(activation_hidden)))(linr)
+                acti <- get(paste0("let_Activate",str_to_title(activation_hidden)))(linr)
                 network_model[[layr]][["acti_func"]] <- activation_hidden
             }
             
@@ -798,13 +798,31 @@ set_ForwardProp <- function(network_model, data_in, activation_hidden="relu", ac
 }
 
 
-ComputeCost <- function(pred, true, epis=1e-10) {
+get_ComputeCost <- function(pred, true, epsi=1e-10) {
+    #' @title Compute the Cost
+    #' @description Compute the cost of a given network.
+    #' @note Uses a tiny epsilon value in order to account for perfect predictions.
+    #' @param pred `matrix`. The matrix of values to use for the prediction.
+    #' @param true `matrix`. The matrix of values to use for the truth.
+    #' @param epsi `number`. A very small epsilon value, in order to adjust for perfect predictions.
+    #' @return A single floating point number.
+    #' @author chrimaho
+    #' @examples
+    #' # Works
+    #' get_ComputeCost(
+    #'     pred,
+    #'     true,
+    #'     epsi
+    #' )
+    
+    # Packages
+    require(assertthat)
     
     # Validations
-    assert_that(is.matrix(pred))
-    assert_that(is.matrix(true))
-    assert_that(is.number(epis))
-    assert_that(epis < 0.0001, msg="'epis' should be a very small epsilom value.")
+    assert_that(pred %>% is.matrix, msg="'pred' must be type 'matrix'.")
+    assert_that(true %>% is.matrix, msg="'true' must be type 'matrix'.")
+    assert_that(epsi %>% is.number, msg="'epsi' must be type 'number'.")
+    assert_that(epsi > 0.0001, msg="'epsi' should be a very small epsilon value.")
     
     # Get number of samples
     samp <- length(true)
@@ -816,10 +834,8 @@ ComputeCost <- function(pred, true, epis=1e-10) {
     for (i in 1:samp) {
         
         # Adjust for perfect predictions.
-        pred <<- pred
-        i <<- i
-        if (pred[i]==1) {pred[i] <- pred[i]-epis} #pred[i] %<>% subtract(epis)
-        if (pred[i]==0) {pred[i] <- pred[i]+epis} #pred[i] %<>% add(epis)
+        if (pred[i]==1) {pred[i] %<>% subtract(epsi)}
+        if (pred[i]==0) {pred[i] %<>% add(epsi)}
         
         # Calculate totals
         total_cost <- total_cost - ((true[i] * log(pred[i]) + (1-true[i]) * log(1-pred[i])))
@@ -831,71 +847,238 @@ ComputeCost <- function(pred, true, epis=1e-10) {
     
     # Return
     return(cost)
-    
 }
 
 
-ApplyCost <- function(network_model, cost) {
+set_ApplyCost <- function(network_model, cost) {
+    #' @title Apply Cost to model
+    #' @description Apply the calculated cost to each layer of a given `network_model`.
+    #' @note It simply applies the same value to the `cost` section of each layer.
+    #' @param network_model `list`. The network model that should have the cost applied to it. It must be an instantiated and initialised model, which has already had the `set_ForwardProp` function applied to it. Default value `NA`.
+    #' @param cost `number`. The cost that has been calculated for the model. It is the result of running the `get_ComputeCost()` function. Default value `NA`.
+    #' @return The `network_model`, with the cost value applied to each layer.
+    #' @author chrimaho
+    #' @examples
+    #' # Works
+    #' set_ApplyCost(
+    #'     network_model=NA,
+    #'     cost=NA
+    #' )
+    
+    # Packages
+    require(assertthat)
+    
+    # Validations
+    assert_that(network_model %>% is.list, msg="'network_model' must be type 'list'.")
+    assert_that(cost %>% is.number, msg="'cost' must be type 'number'.")
+    assert_that(network_model %>% names %>% extract(1) == "input", msg="The first layer of 'network_model' must be 'input'.")
+    assert_that(network_model %>% names %>% rev %>% extract(1) == "output", msg="The last layer of 'network_model' must be 'output'.")
+    for (name in network_model %>% names) {
+        if (!name %in% c("input","output")) {
+            assert_that(name %>% as.numeric %>% is.integer, msg="Each hidden layer in 'network_model' must be an integer value.")
+        }
+    }
     
     # Apply back to the model
-    for (layer in names(network_model)) {
+    for (layer in network_model %>% names) {
         network_model[[layer]][["cost"]] <- cost
     }
     
+    # Return
     return(network_model)
 }
 
 
-DifferentiateCost <- function(pred, true) {
+get_DifferentiateCost <- function(pred=NA, true=NA) {
+    #' @title Differentiate Cost Value
+    #' @description Differentiate the Cost value.
+    #' @note Simple differentiation function.
+    #' @param pred `matrix`. The matrix of predicted values.
+    #' @param true `matrix`. The matrix of true values.
+    #' @return A floating point vlue.
+    #' @seealso 
+    #' @author chrimaho
+    #' @examples
+    #' # Works
+    #' get_DifferentiateCost(
+    #'     pred,
+    #'     true
+    #' )
+    
+    # Packages
+    require(assertthat)
+    
+    # Validations
+    assert_that(pred %>% is.matrix, msg="'pred' must be type 'matrix'.")
+    assert_that(true %>% is.matrix, msg="'true' must be type 'matrix'.")
+    
+    # Do work
     diff_cost <- -(divide_by(true, pred) - divide_by(1-true, 1-pred))
+    
+    # Return
     return(diff_cost)
 }
 
 
-ApplyDifferentiateCost <- function(network_model, cost_differential) {
+set_ApplyDifferentiateCost <- function(network_model, cost_differential) {
+    #' @title Apply Cost Differential to the Network
+    #' @description Apply the calculated Cost Differential function to the given network.
+    #' @note Applies the same value to each layer of the network. The `cost_differential` is transposed for the `output` layer by running the `t()` function, which is necessary for the back-propagation parts.
+    #' @param network_model `list`. The model that the cost differential should be applied to. Must be a model that has been instantiated and initialised, and has had the `set_ForwardProp()` function run over it.
+    #' @param cost_differential `number`. The differentiated cost for the given model. The result of running the `get_DifferentiateCost()` function.
+    #' @return The `network_model`, after having the `cost_differential` applied to each layer..
+    #' @author chrimaho
+    #' @examples
+    #' # Works
+    #' set_ApplyDifferentiateCost(
+    #'     network_model,
+    #'     cost_differential
+    #' )
+    
+    # Packages
+    require(assertthat)
+    
+    # Validations
+    assert_that(network_model %>% is.list, msg="'network_model' must be type 'list'.")
+    assert_that(cost_differential %>% is.number, msg="'cost_differential' must be type 'number'.")
+    assert_that(network_model %>% names %>% extract(1) == "input", msg="The first layer of 'network_model' must be 'input'.")
+    assert_that(network_model %>% names %>% rev %>% extract(1) == "output", msg="The last layer of 'network_model' must be 'output'.")
+    for (name in network_model %>% names) {
+        if (!name %in% c("input","output")) {
+            assert_that(name %>% as.numeric %>% is.integer, msg="Each hidden layer in 'network_model' must be an integer value.")
+        }
+    }
+    
+    # Do work
     for (layer in names(network_model)) {
         network_model[[layer]][["back_cost"]] <- cost_differential
         if (layer=="output") {
             network_model[[layer]][["back_acti"]] <- network_model[[layer]][["back_cost"]] %>% t()
         }
     }
+    
+    # Return
     return(network_model)
 }
 
 
-DifferentiateLinear <- function(back_linr_curr, acti_prev, wgts, bias) {
+get_DifferentiateLinear <- function(back_linr_curr, acti_prev, wgts, bias) {
+    #' @title Differentiate the linear algebra part
+    #' @description For a given layer, differentiate the linear algebra parts.
+    #' @note Do the weights of current layer first, then bias of the current layer, then activation of the the previous layer.
+    #' @param back_linr_curr `matrix`. The differentiated linear matrix of the next layer.
+    #' @param acti_prev `matrix`. The activate matrix from the previous layer.
+    #' @param wgts `matrix`. The weights matrix of the current layer.
+    #' @param bias `matrix`. The bias matrix of the current layer.
+    #' @return A list of three matrices. 1) `diff_acti_prev`: The differentiated activation matrix of the previous layer; 2) `diff_wgts`: The differentiated weights matrix of the current layer; 3) `diff_bias`: The differentiated bias matrix of the current layer.
+    #' @seealso 
+    #' @author chrimaho
+    #' @examples
+    #' # Works
+    #' get_DifferentiateLinear(
+    #'     back_linr_curr,
+    #'     acti_prev,
+    #'     wgts,
+    #'     bias
+    #' )
     
-    samp <- dim(acti_prev)[2]
+    # Packages
+    require(assertthat)
     
+    # Validations
+    assert_that(back_linr_curr %>% is.matrix, msg="'back_linr_curr' must be type 'matrix'.")
+    assert_that(acti_prev %>% is.matrix, msg="'acti_prev' must be type 'matrix'.")
+    assert_that(wgts %>% is.matrix, msg="'wgts' must be type 'matrix'.")
+    assert_that(bias %>% is.matrix, msg="'bias' must be type 'matrix'.")
+    
+    # get number of samples
+    samp <- acti_prev %>% dim %>% extract(2)
+    
+    # Check
     # print(dim(back_linr_curr))
     # print(dim(acti_prev))
     # print(dim(wgts))
     
+    # Differentiate weights
     diff_wgts <- 1/samp * (back_linr_curr %*% acti_prev)
+    
+    # Differentiate bias
     diff_bias <- 1/samp * rowSums(back_linr_curr, dims=1)
+    
+    # Differentiate activation
     diff_acti_prev <- wgts %*% back_linr_curr
     
+    # Consolidate in to one list
     list_linr <- list(
         diff_acti_prev, 
         diff_wgts, 
         diff_bias
     )
     
+    # Return
     return(list_linr)
-    
 }
 
 
-relu_backward <- function(diff_acti_curr, linr_curr) {
+let_BackwardActivateRelu <- function(diff_acti_curr, linr_curr) {
+    #' @title Get Backwards ReLU Activation
+    #' @description Get the differentiated ReLU activation .
+    #' @note Simply reversing the work of the `let_ActivateRelu()` function.
+    #' @param diff_acti_curr `matrix`. The differentiated activation matrix of the current layer.
+    #' @param linr_curr `matrix`. The linear algebra matrix in the current layer.
+    #' @return The differentiated linear algebra matrix of the current layer.
+    #' @seealso 
+    #' @author chrimaho
+    #' @examples
+    #' # Works
+    #' let_BackwardActivateRelu(
+    #'     diff_acti_curr,
+    #'     linr_curr
+    #' )
+    
+    # Packages
+    require(assertthat)
+    
+    # Validations
+    assert_that(diff_acti_curr %>% is.matrix, msg="'diff_acti_curr' must be type 'matrix'.")
+    assert_that(linr_curr %>% is.matrix, msg="'linr_curr' must be type 'matrix'.")
+    
+    # Do work
     diff_linr_curr <- diff_acti_curr
     diff_linr_curr[linr_curr<=0] <- 0
+    
+    # Return
     return(diff_linr_curr)
 }
 
 
-sigmoid_backward <- function(diff_acti_curr, linr_curr) {
+let_BackwardActivateSigmoid <- function(diff_acti_curr, linr_curr) {
+    #' @title Get Backwards Sigmoid Activation
+    #' @description Get the differentiated Sigmoid activation .
+    #' @note Simply reversing the work of the `let_ActivateSigmoid()` function. Need to transpose a couple of times in order to ensure that the matrices are all aligned correctly.
+    #' @param diff_acti_curr `matrix`. The differentiated activation matrix of the current layer.
+    #' @param linr_curr `matrix`. The linear algebra matrix in the current layer.
+    #' @return The differentiated linear algebra matrix of the current layer.
+    #' @author chrimaho
+    #' @examples
+    #' # Works
+    #' let_BackwardActivateRelu(
+    #'     diff_acti_curr,
+    #'     linr_curr
+    #' )
+    
+    # Packages
+    require(assertthat)
+    
+    # Validations
+    assert_that(diff_acti_curr %>% is.matrix, msg="'diff_acti_curr' must be type 'matrix'.")
+    assert_that(linr_curr %>% is.matrix, msg="'linr_curr' must be type 'matrix'.")
+    
+    # Do work
     temp <- 1/(1+exp(-linr_curr))
     diff_linr_curr <- t(diff_acti_curr) * temp * (1-temp)
+    
+    # Return
     return(t(diff_linr_curr))
 }
 
@@ -984,7 +1167,7 @@ TrainModel <- function(x_train, y_train,
                        epochs=500, learning_rate=0.001,
                        activation_hidden="relu", activation_final="sigmoid",
                        verbosity=NA
-) {
+                       ) {
     
     # Set return values
     output <- list(
