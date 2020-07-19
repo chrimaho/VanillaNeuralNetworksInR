@@ -99,7 +99,7 @@ library(caret)      #<-- Doing data partitioning
 library(stringi)    #<-- Some string manipulation parts
 library(DescTools)  #<-- The only package that properly checks `is.integer`
 library(tictoc)     #<-- Time how long different processes take
-library(roxygen2)
+library(docstring)  #<-- Makes viewing the documentation a lot easier
 ```
 
 ```{r Set Defaults, eval=TRUE, echo=FALSE}
@@ -391,7 +391,7 @@ rm(partition)
 ```{r Check Splitting, eval=TRUE, echo=TRUE}
 for (i in c("trn_img","tst_img","trn_cls","tst_cls")) {
     j <- get(i)
-    get_ObjectAttributes(j, i)
+    get_ObjectAttributes(j, i) %>% cat 
 }
 rm(i,j)
 ```
@@ -498,7 +498,7 @@ InstantiateNetwork <- function(input=50, hidden=c(30,20,10), output=10) {
 ```
 
 ```{r Instantiate Network, eval=TRUE, echo=TRUE}
-network_model <- InstantiateNetwork(
+network_model <- set_InstantiateNetwork(
     input=3072, 
     hidden=c(100,75,50,30,20), 
     output=1
@@ -670,7 +670,7 @@ For this, the custom function `get_CountOfElementsWithCondition()` is used. The 
 ## RUN
 
 ```{r Run the Setup, eval=TRUE, echo=TRUE}
-network_model <- InitialiseModel(network_model)
+network_model <- set_InitialiseModel(network_model)
 ```
 
 # Forward Propogation
@@ -1388,5 +1388,35 @@ get_Prediction(tst_img, tst_cls, network_model) %>%
     })
 ```
 
+```{r}
+pred <- get_Prediction(tst_img, tst_cls, network_model, 0.16) 
 
+pred %>% 
+    select(class) %>% pull() %>% 
+    (function(x){
+        print(min(x))
+        print(max(x))
+        print(mean(x))
+        hist(x)
+        print(sum(x>0.5))
+    })
+
+pred %>% select(truth, class) %>% distinct()
+
+library(plotROC)
+pred %>% 
+    ggplot(aes(m=probs, d=truth)) +
+    geom_roc(n.cuts=0) +
+    style_roc(theme=theme_grey)
+
+pred %<>% 
+    mutate(class=ifelse(class=="Yes","Car","Other"),
+           truth=ifelse(truth=="No","Other","Car")) %>% 
+    mutate_at(c("class","truth"), factor)
+
+table(pred$truth)
+table(pred$class)
+caret::confusionMatrix(pred$class, pred$truth, positive="Car")
+conf <- caret::confusionMatrix(pred$class, pred$truth, positive="Car")
+```
 

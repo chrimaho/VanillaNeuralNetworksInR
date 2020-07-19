@@ -470,6 +470,9 @@ set_InitialiseLayer <- function(network_model, layer_index, initialisation_algor
     }
     nodes_out <- network_model %>% extract2(layer) %>% extract2("nodz")
     
+    # Set Seed
+    set.seed(1234)
+    
     # Initialise weight matrix
     w_matrix <- matrix(
         data=rnorm(nodes_in * nodes_out), 
@@ -530,7 +533,7 @@ set_InitialiseModel <- function(network_model, initialisation_algorithm="xavier"
     assert_that(network_model %>% is.list, msg="'network_model' must be type 'list'.")
     assert_that(or(is.string(initialisation_algorithm), is.na(initialisation_algorithm)), msg="'initialisation_algorithm' must be type 'string' or value 'NA'.")
     assert_that(initialisation_algorithm %in% c("xavier","he",NA), msg="'initialisation_algorithm' must be one of 'xavier', 'he', or 'NA'.")
-    assert_that(or(is.numeric(initialisation_order), is.string(initialisation_order)), msg="'initialisation_order' must be type 'integer' or 'string'.")
+    assert_that(or(is.integer(initialisation_order), is.string(initialisation_order)), msg="'initialisation_order' must be type 'integer' or 'string'.")
     assert_that(network_model %>% names %>% extract(1) == "input", msg="The first layer of 'network_model' must be 'input'.")
     assert_that(network_model %>% names %>% rev %>% extract(1) == "output", msg="The last layer of 'network_model' must be 'output'.")
     for (name in network_model %>% names) {
@@ -1083,7 +1086,32 @@ let_BackwardActivateSigmoid <- function(diff_acti_curr, linr_curr) {
 }
 
 
-BackwardProp <- function(network_model) {
+set_BackwardProp <- function(network_model) {
+    #' @title Run Back Propagation
+    #' @description Apply Back Propagation over a given model.
+    #' @note Skips the `input` layer, because that doesn't need to be back-propagated. Also, it runs through each layer in reverse; in the same way that the `set_ForwardProp()` function works from start to end, the `set_BackwardProp()` function works from end to start.
+    #' @param network_model `list`. The model to run back-propagation over.
+    #' @return The same `network_model`, but having had back-propagation applied to it.
+    #' @seealso 
+    #' @author chrimaho
+    #' @examples
+    #' # Works
+    #' set_BackwardProp(
+    #'     network_model
+    #' )
+    
+    # Packages
+    require(assertthat)
+    
+    # Validations
+    assert_that(network_model %>% is.list, msg="'network_model' must be type 'list'.")
+    assert_that(network_model %>% names %>% extract(1) == "input", msg="The first layer of 'network_model' must be 'input'.")
+    assert_that(network_model %>% names %>% rev %>% extract(1) == "output", msg="The last layer of 'network_model' must be 'output'.")
+    for (name in network_model %>% names) {
+        if (!name %in% c("input","output")) {
+            assert_that(name %>% as.numeric %>% is.integer, msg="Each hidden layer in 'network_model' must be an integer value.")
+        }
+    }
     
     # Loop through each layer in reverse order
     for (layr_indx in network_model %>% names %>% length %>% 1:. %>% rev) {
@@ -1102,7 +1130,7 @@ BackwardProp <- function(network_model) {
         wgts_curr <- network_model[[layr_curr]][["wgts"]]
         bias_curr <- network_model[[layr_curr]][["bias"]]
         acti_prev <- network_model[[layr_prev]][["acti"]]
-        acti_func_back <- network_model[[layr_curr]][["acti_func"]] %>% paste0("_backward")
+        acti_func_back <- network_model[[layr_curr]][["acti_func"]] %>% str_to_title %>% paste0("let_Backward", .)
         diff_acti_curr <- network_model[[layr_curr]][["back_acti"]]
         diff_linr_curr <- matrix()
         diff_acti_prev <- matrix()
@@ -1132,16 +1160,45 @@ BackwardProp <- function(network_model) {
     }
     
     return(network_model)
-    
 }
 
 
-UpdateModel <- function(network_model, learning_rate) {
+set_UpdateModel <- function(network_model, learning_rate=0.001) {
+    #' @title Update the Model
+    #' @description Update the `network_model` by taking a number of 'steps', which is effectively updating the weights and biases by multiplying the matrices by a given learning rate (`learning_rate`).
+    #' @note The `grad_step_weights` element is transposed to ensure it is in the correct orientation.
+    #' @param network_model `list`. The network model to be updated.
+    #' @param learning_rate `number`. The learning rate that the parameters should be updated by. It should be a small decimal number. Default value `0.001`.
+    #' @return The same `network_model`, after having the parameters (`wgts` & `bias`) updated.
+    #' @seealso 
+    #' @author chrimaho
+    #' @examples
+    #' # Works
+    #' set_UpdateModel(
+    #'     network_model,
+    #'     learning_rate=0.001
+    #' )
     
-    for (index in 1:length(names(network_model))) {
+    # Packages
+    require(assertthat)
+    
+    # Validations
+    assert_that(network_model %>% is.list, msg="'network_model' must be type 'list'.")
+    assert_that(learning_rate %>% is.number, msg="'learning_rate' must be type 'number'.")
+    assert_that(between(learning_rate, 0, 1), msg="'learning_rate' must be between '0' and '1'.")
+    assert_that(network_model %>% names %>% extract(1) == "input", msg="The first layer of 'network_model' must be 'input'.")
+    assert_that(network_model %>% names %>% rev %>% extract(1) == "output", msg="The last layer of 'network_model' must be 'output'.")
+    for (name in network_model %>% names) {
+        if (!name %in% c("input","output")) {
+            assert_that(name %>% as.numeric %>% is.integer, msg="Each hidden layer in 'network_model' must be an integer value.")
+        }
+    }
+    
+    # Do work
+    for (index in network_model %>% names %>% length %>% 1:.) {
         
         # Get layer name
-        layr <- names(network_model)[index]
+        layr <- network_model %>% names %>% extract(index)
         
         # Skip 'input' layer
         if (layr=="input") next
@@ -1156,18 +1213,68 @@ UpdateModel <- function(network_model, learning_rate) {
         
     }
     
+    # Return
     return(network_model)
-    
 }
 
 
-TrainModel <- function(x_train, y_train,
-                       input_nodes=dim(x_train)[2], hidden_nodes=c(100, 50, 10), output_nodes=1,
-                       initialisation_algorithm="xavier", initialisation_order="layers",
-                       epochs=500, learning_rate=0.001,
-                       activation_hidden="relu", activation_final="sigmoid",
-                       verbosity=NA
-                       ) {
+let_TrainModel <- function(x_train, y_train,
+                           input_nodes=dim(x_train)[2], hidden_nodes=c(100, 50, 10), output_nodes=1,
+                           initialisation_algorithm="xavier", initialisation_order="layers",
+                           epochs=500, learning_rate=0.001,
+                           activation_hidden="relu", activation_final="sigmoid",
+                           verbosity=NA
+                           ) {
+    #' @title Train network model
+    #' @description Parse in the relevant parameters, and then instantiate, initialise, forward propagate, assess, differentiate, backward propagate and update model. Then repeat this process `epoch` number of times.
+    #' @note The model will be re-created every time this function is run.
+    #' @param x_train `array`. The 4-D array of images for training.
+    #' @param y_train `array`. The 2-D array of labels for each image.
+    #' @param input_nodes `integer`.
+    #' @param hidden_nodes `vector` of `integer`s.
+    #' @param output_nodes `integer`.
+    #' @param initialisation_algorithm `string` or `NA`.
+    #' @param initialisation_order `integer` or `string`.
+    #' @param epochs `integer`.
+    #' @param learning_rate `number`.
+    #' @param activation_hidden `string`.
+    #' @param activation_final `string`.
+    #' @param verbosity `integer` or `NA`.
+    #' @return A list containing the `results`, and the final trained `network_model`.
+    #' @seealso 
+    #' @author chrimaho
+    #' @examples
+    #' # Works
+    #' let_TrainModel(
+    #'     x_train,
+    #'     y_train
+    #' )
+    
+    # Packages
+    require(assertthat)
+    
+    # Validations
+    assert_that(x_train %>% is.NA, msg="'x_train' must be type 'array'.")
+    assert_that(y_train %>% is.NA, msg="'y_train' must be type 'array'.")
+    assert_that(input_nodes %>% is.integer, msg="'input_nodes' must be type 'integer'.")
+    assert_that(hidden_nodes %>% is.vector, msg="'hidden_nodes' must be type 'vector'.")
+    assert_that(hidden_nodes %>% is.integer %>% all, msg="All elements of 'hidden_nodes' must be integers.")
+    assert_that((hidden_nodes > 0) %>% all, msg="All elements of 'hidden_nodes' must be greater than '0'.")
+    assert_that(output_nodes %>% is.integer, msg="'input' must be type 'integer'.")
+    assert_that(or(is.string(initialisation_algorithm), is.na(initialisation_algorithm)), msg="'initialisation_algorithm' must be type 'string' or value 'NA'.")
+    assert_that(initialisation_algorithm %in% c("xavier","he",NA), msg="'initialisation_algorithm' must be one of 'xavier', 'he', or 'NA'.")
+    assert_that(or(is.integer(initialisation_order), is.string(initialisation_order)), msg="'initialisation_order' must be type 'integer' or 'string'.")
+    assert_that(epochs %>% is.integer, msg="'epochs' must be type 'integer'.")
+    assert_that(learning_rate %>% is.number, msg="'learning_rate' must be type 'number'.")
+    assert_that(between(learning_rate, 0, 1), msg="'learning_rate' must be between '0' and '1'.")
+    assert_that(is.string(activation_hidden), msg="'activation_hidden' must be type 'string'.")
+    assert_that(is.string(activation_final), msg="'activation_final' must be type 'string'.")
+    assert_that(activation_hidden %in% c("sigmoid","relu","softmax","swish"), msg="'activation_hidden' must be one of: 'sigmoid', 'relu', 'softmax', or 'swish'.")
+    assert_that(activation_final %in% c("sigmoid","relu","softmax","swish"), msg="'activation_final' must be one of: 'sigmoid', 'relu', 'softmax', or 'swish'.")
+    assert_that(or(is.integer(verbosity), is.na(verbosity)), msg="'verbosity' must be type 'integer' or value 'NA'.")
+    
+    # Begin the timer
+    time_begin <- Sys.time()
     
     # Set return values
     output <- list(
@@ -1179,14 +1286,14 @@ TrainModel <- function(x_train, y_train,
     )
     
     # Instantiate
-    network_model <- InstantiateNetwork(
+    network_model <- set_InstantiateNetwork(
         input=input_nodes,
         hidden=hidden_nodes, 
         output=output_nodes
     )
     
     # Initialise
-    network_model <- InitialiseModel(
+    network_model <- set_InitialiseModel(
         network_model=network_model, 
         initialisation_algorithm=initialisation_algorithm, 
         initialisation_order=initialisation_order
@@ -1196,7 +1303,7 @@ TrainModel <- function(x_train, y_train,
     for (epoch in 1:epochs) {
         
         # Forward Prop
-        network_model <- ForwardProp(
+        network_model <- set_ForwardProp(
             network_model=network_model, 
             data_in=x_train, 
             activation_hidden=activation_hidden, 
@@ -1204,18 +1311,22 @@ TrainModel <- function(x_train, y_train,
         )
         
         # Get cost
-        cost <- ComputeCost(network_model[["output"]][["acti"]], y_train, 1e-10)
+        cost <- get_ComputeCost(
+            network_model[["output"]][["acti"]], 
+            y_train, 
+            1e-10
+        )
         
         # Apply cost
-        network_model <- ApplyCost(
+        network_model <- set_ApplyCost(
             network_model=network_model, 
             cost=cost
         )
         
-        # Print cost
+        # Print update
         if (!is.na(verbosity)) {
             if (epoch %% verbosity == 0) {
-                print("With learning rate {}, at epoch {}, the cost is: {}" %>% str_Format(learning_rate, epoch, cost))
+                print("With learning rate {}, at epoch {}, the cost is: {}\n  Elapsed {}" %>% str_Format(learning_rate, epoch, cost, Sys.time()-time_begin))
             }
         }
         
@@ -1223,16 +1334,16 @@ TrainModel <- function(x_train, y_train,
         output[["results"]][["cost"]] %<>% c(cost)
         
         # Differentiate cost
-        network_model <- ApplyDifferentiateCost(
+        network_model <- set_ApplyDifferentiateCost(
             network_model=network_model, 
             DifferentiateCost(network_model[["output"]][["acti"]], y_train)
         )
         
         # Backprop
-        network_model <- BackwardProp(network_model)
+        network_model <- set_BackwardProp(network_model)
         
         # Update parameters
-        network_model <- UpdateModel(
+        network_model <- set_UpdateModel(
             network_model=network_model, 
             learning_rate=learning_rate
         )
@@ -1245,24 +1356,60 @@ TrainModel <- function(x_train, y_train,
 }
 
 
-get_Prediction <- function(x_test, y_test, network_model) {
+get_Prediction <- function(x_test, y_test, network_model, threshold=0.5) {
+    #' @title Get Prediction from Model
+    #' @description Use the `network_model` to forward-propagate `x_test` to create a set of predictions. Then, compare these predictions with `y_test`.
+    #' @note Add a note for the developer.
+    #' @param x_test `array`. A 4-D array of images.
+    #' @param y_test `array`. A 2-D array of labels.
+    #' @param network_model `list`. The trained network_model.
+    #' @return A `data.frame` with three columns: 1) `probs`: The Probability value of each of the labels, and is the same length as `y_test`; 2) `truth`: The true labels, the exact same vector as `y_test`; 3) `class`: The class of values, defined at a given cutoff value.
+    #' @seealso 
+    #' @author chrimaho
+    #' @examples
+    #' # Works
+    #' get_Prediction(
+    #'     x_test=NA,
+    #'     y_test=NA
+    #' )
     
-    predic <- ForwardProp(
+    # Packages
+    require(assertthat)
+    
+    # Validations
+    assert_that(x_test %>% is.array, msg="'x_test' must be type 'array'.")
+    assert_that(y_test %>% is.array, msg="'y_test' must be type 'array'.")
+    assert_that(network_model %>% is.list, msg="'network_model' must be type 'list'.")
+    assert_that(network_model %>% names %>% extract(1) == "input", msg="The first layer of 'network_model' must be 'input'.")
+    assert_that(network_model %>% names %>% rev %>% extract(1) == "output", msg="The last layer of 'network_model' must be 'output'.")
+    for (name in network_model %>% names) {
+        if (!name %in% c("input","output")) {
+            assert_that(name %>% as.numeric %>% is.integer, msg="Each hidden layer in 'network_model' must be an integer value.")
+        }
+    }
+    
+    # Create prediction
+    predic <- set_ForwardProp(
         network_model=network_model, 
         data_in=x_test, 
         activation_hidden="relu", 
         activation_final="sigmoid"
     )
     
+    # Extract probabilities
     probas <- predic[["output"]][["acti"]]
     
+    # Define results
     result <- data.frame(
         probs=probas,
         truth=y_test
     )
-    result %<>% mutate(class=ifelse(probas>0.5, 1, 0))
     
+    # Add class
+    result %<>% 
+        mutate(class=ifelse(probas>threshold, 1, 0))
+    
+    # Return
     return(result)
-    
 }
 
