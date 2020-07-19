@@ -1363,6 +1363,7 @@ get_Prediction <- function(x_test, y_test, network_model, threshold=0.5) {
     #' @param x_test `array`. A 4-D array of images.
     #' @param y_test `array`. A 2-D array of labels.
     #' @param network_model `list`. The trained network_model.
+    #' @param threshold `number`. A single value between `0` & `1` that is the threshold for the predicted probabilities.
     #' @return A `data.frame` with three columns: 1) `probs`: The Probability value of each of the labels, and is the same length as `y_test`; 2) `truth`: The true labels, the exact same vector as `y_test`; 3) `class`: The class of values, defined at a given cutoff value.
     #' @seealso 
     #' @author chrimaho
@@ -1379,6 +1380,8 @@ get_Prediction <- function(x_test, y_test, network_model, threshold=0.5) {
     # Validations
     assert_that(x_test %>% is.array, msg="'x_test' must be type 'array'.")
     assert_that(y_test %>% is.array, msg="'y_test' must be type 'array'.")
+    assert_that(threshold %>% is.number, msg="'threshold' must be type 'number'.")
+    assert_that(between(threshold, 0, 1), msg="'threshold must be between '0' and '1'.")
     assert_that(network_model %>% is.list, msg="'network_model' must be type 'list'.")
     assert_that(network_model %>% names %>% extract(1) == "input", msg="The first layer of 'network_model' must be 'input'.")
     assert_that(network_model %>% names %>% rev %>% extract(1) == "output", msg="The last layer of 'network_model' must be 'output'.")
