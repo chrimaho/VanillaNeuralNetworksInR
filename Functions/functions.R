@@ -204,6 +204,7 @@ is.integer <- function(value) {
     return(IsWhole(value))
 }
 
+
 set_MakeImage <- function(image, index=1) {
     #' @title Convert Image from Array to RGB Image
     #' @description Slice a given 4-D array at a given index, and convert that to an RGB image.
@@ -289,6 +290,7 @@ plt_PlotImage <- function(images, classes, index=1) {
     return(invisible(NULL))
 }
 
+
 set_InstantiateNetwork <- function(input=50, hidden=c(30,20,10), output=1) {
     #' @title Instantiate the Network
     #' @description Instantiate the network.
@@ -359,6 +361,7 @@ set_InstantiateNetwork <- function(input=50, hidden=c(30,20,10), output=1) {
     # Return
     return(model)
 }
+
 
 let_InitialiseXavier <- function(nodes_in, nodes_out, order=6) {
     #' @title Xavier Initialisation

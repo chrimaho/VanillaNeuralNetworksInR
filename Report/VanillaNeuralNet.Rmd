@@ -120,16 +120,33 @@ str_Format <- function(string, ...) {
     #' @title String Formatter
     #' @description Take an input string, and substitute in-string variables.
     #' @note This is similar to the Python `string.foramt()` method.
-    #' @param string string. The string to be re-formatted. Note, each of the named arguments must be surrounded in curly brackets.
-    #' @param ... variables. A list of variables. Note, these can either be named or not; but they must all be named, or all be blank, because it cannot handle a mixture. Each of these arguments must align to the variables in curly brackets from the `string` argument. These will be combined in to a list.
+    #' @param string `string`. The string to be re-formatted. Note, each of the named arguments must be surrounded in curly brackets.
+    #' @param ... `variables`. A list of variables. Note, these can either be named or not; but they must all be named, or all be blank, because it cannot handle a mixture. Each of these arguments must align to the variables in curly brackets from the `string` argument. These will be combined in to a list.
     #' @return A formatted string
-    #' @example str_Format("Sammy the {animal} {verb} a {noun}.", animal="shark", verb="made", noun="house")
-    #' @example str_Format("Sammy the {} {} a {}.", "shark", "made", "house")
-    #' @example "Sammy the {animal} {verb} a {noun}" %>% str_Format(animal="shark", verb="made", noun="house")
-    #' @references https://stackoverflow.com/questions/44763056/is-there-an-r-equivalent-of-pythons-string-format-function#answer-44763659
+    #' @seealso https://stackoverflow.com/questions/44763056/is-there-an-r-equivalent-of-pythons-string-format-function#answer-44763659
     #' @author chrimaho
+    #' @examples 
+    #' str_Format(
+    #'     "Sammy the {animal} {verb} a {noun}.", 
+    #'     animal="shark", 
+    #'     verb="made", 
+    #'     noun="house"
+    #' )
+    #' 
+    #' str_Format(
+    #'     "Sammy the {} {} a {}.", 
+    #'     "shark", 
+    #'     "made", 
+    #'     "house"
+    #' )
+    #' 
+    #' "Sammy the {animal} {verb} a {noun}" %>% 
+    #'     str_Format(animal="shark", verb="made", noun="house")
+    #' 
+    #' "Sammy the {} {} a {}" %>%
+    #'     str_Format("shark", "made", "house")
     
-    # Import packages ----
+    # Packages
     require(stringr)
     require(magrittr)
     require(dplyr)
@@ -137,15 +154,14 @@ str_Format <- function(string, ...) {
     require(dynutils)
     require(english)
     
-    # Validations ----
-    assert_that(is.string(string))
-    assert_that(c("stringr", "magrittr", "dplyr", "assertthat", "dynutils", "english") %all_in% .packages(), msg="The packages must be mounted.")
+    # Validations
+    assert_that(string %>% is.string, msg="'string' must be type 'string'.")
     
-    # Set Up ----
+    # Set Up
     num_variables <- str_count(string, coll("{}"))
     vars <- list(...)
     
-    # Handle if vars are not named ----
+    # Handle if vars are not named
     if (num_variables>0) {
         
         # Add number in between each curly bracket
@@ -158,7 +174,7 @@ str_Format <- function(string, ...) {
         
     }
     
-    # Make environment ----
+    # Make environment
     envir <- as.environment(vars)
     parent.env(envir) <- .GlobalEnv
     
@@ -166,41 +182,86 @@ str_Format <- function(string, ...) {
     string %<>% str_replace_all("\\{", "${")
     str_return <- str_interp(string=string, env=envir)
     
-    # Return ----
+    # Return
     return(str_return)
     
 }
 
 
-get_CountOfElementsWithCondition <- function(list_of_elements, condition=NULL) {
-    #' @title Get Count of Elements With Condition
+get_CountOfElementsWithCondition <- function(vector_of_elements, condition=NULL) {
+    #' @title Get Count of Elements with Condition
     #' @description Get the count of the number of elements in a list that meet a specified condition.
-    #' @note The `condition` must be a hidden function. Also note that the `warnings` are suppressed when running the `condition` function.
-    #' @param list_of_elements vector. The list of elements to check.
-    #' @param condition function. The condition for checking. Must be a hidden function.
+    #' @note The `condition` must be an anonymous function. Also note that the `warnings` are suppressed when running the `condition` function.
+    #' @param vector_of_elements `vector`. The list of elements to check.
+    #' @param condition `function`. The condition for checking. Must be an anonymous function. Defaults to `NULL`.
     #' @return An integer.
-    #' @example get_CountOfElementsWithCondition(c("i", "1", "2", "3", "o"), function(x){IsWhole(as.numeric(x))}) ## returns 3
-    #' @example get_CountOfElementsWithCondition(c("i", "1", "2", "3", "o"))                                      ## returns 5
-    #' @example get_CountOfElementsWithCondition(c("i", "1", "2", "3", "o"), 2)                                   ## throws error
-    #' @references https://thispointer.com/python-count-elements-in-a-list-that-satisfy-certain-conditions/#crayon-5ea195c434f39109077492-1
+    #' @seealso https://thispointer.com/python-count-elements-in-a-list-that-satisfy-certain-conditions/#crayon-5ea195c434f39109077492-1
     #' @author chrimaho
+    #' @examples
+    #' # Returns condition
+    #' get_CountOfElementsWithCondition(
+    #'     c("i", "1", "2", "3", "o"),
+    #'     function(x) {IsWhole(as.numeric(x))}
+    #' )
+    #' 
+    #' # Returns length
+    #' get_CountOfElementsWithCondition(
+    #'     c("i", "1", "2", "3", "o")
+    #' )
+    #' 
+    #' # Returns error
+    #' get_CountOfElementsWithCondition(
+    #'     c("i", "1", "2", "3", "o"),
+    #'     2
+    #' )
     
-    # Import packages ----
+    # Import packages
     require(assertthat)
-
-    # Validations ----
-    assert_that(is_vector(list_of_elements))
-    assert_that(or(is_function(condition), is.null(condition)), msg="'condition' must either be a function or the value 'NULL'.")
+    require(dplyr)
     
-    # Do work ----
+    # Validations
+    assert_that(vector_of_elements %>% is_vector, msg="'vector_of_elements' must be type 'vector'.")
+    assert_that(or(condition %>% is_function, condition %>% is.null), msg="'condition' must either be a function or the value 'NULL'.")
+    
+    # Do work
     if (!is.null(condition)) {
-        count <- sum(suppressWarnings(condition(list_of_elements)), na.rm=TRUE)
+        count <- sum(suppressWarnings(condition(vector_of_elements)), na.rm=TRUE)
     } else {
-        count <- length(list_of_elements)
+        count <- length(vector_of_elements)
     }
     
-    # Return ----
+    # Return
     return(count)
+}
+
+
+is.integer <- function(value) {
+    #' @title Check if is integer.
+    #' @description This is a wrapper around the `DescTools::IsWhole()` function.
+    #' @note The `DescTools::IsWhole()` is the only package that genuinely works on integer values. Other functions such as `base::is.integer()` and `purrr::is_integer()` do not work properly...
+    #' @param value `numeric`. The value to be checked.
+    #' @return A logical value confirming if `value` is an integer or not.
+    #' @author chrimaho
+    #' @examples
+    #' # Works
+    #' is.integer(
+    #'     value=1
+    #' )
+    #' 
+    #' # Fails
+    #' is.integer(
+    #'     value=0.5
+    #' )
+    
+    # Packages
+    require(dplyr)
+    require(DescTools)
+    
+    # Validations
+    assert_that(value %>% is.numeric, msg="'value' must be type 'numeric'.")
+    
+    # Do work
+    return(IsWhole(value))
 }
 ```
 
@@ -236,20 +297,32 @@ ClassList <- list(
 ```
 
 ```{r Check Data, eval=TRUE, echo=FALSE, results="asis", message=FALSE, warning=FALSE}
-get_ObjectAttributes <- function(object, name) {
-    #' @title Get Attributes
+get_ObjectAttributes <- function(object, name=deparse(substitute(object))) {
+    #' @title Get Object Attributes
     #' @description Extract and print the key attributes of an object, including `name`, `size`, `class`, `type`, `mode`, `dims`.
     #' @note In order to do pretty-print, parse the result of this function in to the `cat()` function.
-    #' @param object any. The object to be checked.
-    #' @param name string. The name of the object.
+    #' @param object `any`. The object to be checked.
+    #' @param name `string`. The name of the object. Defaults to the name of `object` in the parent environment.
     #' @return A string that contains all the relevant information.
-    #' @example 
     #' @author chrimaho
+    #' @examples 
+    #' vec <- vector(1:20)
+    #' mat <- matrix(1:20, ncol=4)
+    #' 
+    #' get_ObjectAttributes(
+    #'     object=vec
+    #' )
+    #' 
+    #' get_ObjectAttributes(
+    #'     object=mat,
+    #'     name="My Matrix"
+    #' )
     
     # Import packages
     require(assertthat)
     require(magrittr)
-
+    require(dplyr)
+    
     # Get attributes
     if (missing(name)) {name <- deparse(substitute(object))}
     name %<>% paste("Name :", .)
@@ -261,12 +334,12 @@ get_ObjectAttributes <- function(object, name) {
         { if(class(.) %in% c("matrix","data.frame","list","array")) {
             dim(.) %>% paste(collapse="x")
           } else {
-            length(.)
+              length(.)
           } 
         } %>%  
         paste("Dims :", .)
     
-    # Print attributes
+    # Combine attributes
     output <- paste(
         name,
         size,
@@ -278,7 +351,7 @@ get_ObjectAttributes <- function(object, name) {
     )
     
     # Return
-    return(output)
+    return(output %>% paste0("\n"))
 }
 
 # Print result
@@ -290,74 +363,88 @@ For this, the custom function `str_Format()` is used. The source code for this f
 ## Check Images {#checkimages}
 
 ```{r Extract Images, eval=TRUE, echo=TRUE}
-set_MakeImage <- function(images, index=1) {
-    #' @title Slice Array
-    #' @description Slice the images at a given index
-    #' @note Add a note for the developer.
+set_MakeImage <- function(image, index=1) {
+    #' @title Convert Image from Array to RGB Image
+    #' @description Slice a given 4-D array at a given index, and convert that to an RGB image.
+    #' @note `image` must be a 3-D array, the same as returned from the function `tensorflow::tf$keras$datasets$cifar10$load_data()[[2]][[1]][1,,,]`.
+    #' @param image `array`. A 3-D array of image, where the dimensions are: `width`x`height`x`colours`.
+    #' @param index `integer`. The index of the image to be returned. Default value `1`.
+    #' @return An `rgb()` matrix, the result of running the `grDevices::rgb()` function.
     #' @seealso https://stackoverflow.com/questions/32113942/importing-cifar-10-data-set-to-r#answer-39672323
-    #' @param images array. The array to be sliced.
-    #' @param index int. The integer to be sliced
-    #' @return An `rgb()` object.
     #' @author chrimaho
+    #' @examples
+    #' set_MakeImage(
+    #'     image=tensorflow::tf$keras$datasets$cifar10$load_data()[[2]][[1]][1,,,],
+    #'     index=1
+    #' )
     
-    # Libraries ----
+    # Packages
     require(dplyr)
     require(grDevices)
     require(assertthat)
     
-    # Validations ----
-    assert_that(is.array(images))
-    assert_that(is.count(index))
-    assert_that(images %>% dim %>% length == 4, msg="'images' must have 4 dimensions.")
+    # Validations
+    assert_that(image %>% is.array, msg="'image' must be type 'array'.")
+    assert_that(image %>% dim %>% length == 3, msg="'image' must have 4 dimensions.")
+    assert_that(index %>% is.integer, msg="'index' must be type 'integer'.")
     
-    # Extract elements ----
-    img <- images[index,,,]
-    img.r <- img[,,1]
-    img.g <- img[,,2]
-    img.b <- img[,,3]
+    # Extract elements
+    image.r <- image[,,1]
+    image.g <- image[,,2]
+    image.b <- image[,,3]
     
-    # Make rgb ----
-    img.rgb <- rgb(img.r, img.g, img.b, maxColorValue=255)
+    # Make rgb
+    image.rgb <- rgb(image.r, image.g, image.b, maxColorValue=255)
     
-    # Fix dimensions ----
-    dim(img.rgb) <- dim(img.r)
+    # Fix dimensions
+    dim(image.rgb) <- dim(image.r)
     
-    # Return ----
-    return(img.rgb)
+    # Return
+    return(image.rgb)
 }
 
+
 plt_PlotImage <- function(images, classes, index=1) {
-    #' @title Plot Array
-    #' @description Plot a given image.
-    #' @note Add a note for the developer.
-    #' @seealso https://stackoverflow.com/questions/12918367/how-to-plot-with-a-png-as-background#answer-12918368
-    #' @param images array. The image to be plotted.
-    #' @param index int. The index of the image to be plotted.
+    #' @title Plot Image from a given 4-D block of images
+    #' @description Plot a specific image from a given 4-D block of images.
+    #' @note `images` must be a 4-D array, the same as returned from the function `tensorflow::tf$keras$datasets$cifar10$load_data()[[2]][[1]]`.
+    #' @param images `array`. A 4-D array of image, where the dimensions are: `images`x`width`x`height`x`colours`.
+    #' @param classes `array`. A 2-D array of integers, where the dimensions are: `images`x`class`. The first dimension must be the same length as `dim(images)[1]`, but the second dimension can only be length=`1`. In other words, it's a single-column matrix.
+    #' @param index `integer`. The index of the image to be plotted. Default value `1`.
     #' @return Nothing is returned.
+    #' @seealso https://stackoverflow.com/questions/12918367/how-to-plot-with-a-png-as-background#answer-12918368
     #' @author chrimaho
+    #' @examples
+    #' data <- tensorflow::tf$keras$datasets$cifar10$load_data()
+    #' plt_PlotImage(
+    #'     images=data[[2]][[1]],
+    #'     classes=data[[2]][[2]],
+    #'     index=1
+    #' )
     
-    # Libraries ----
+    # Libraries
     require(dplyr)
     require(grDevices)
     require(assertthat)
     require(grid)
     
-    # Validations ----
-    assert_that(is.array(images))
-    assert_that(is.count(index))
+    # Validations
+    assert_that(images %>% is.array)
     assert_that(images %>% dim %>% length == 4, msg="'images' must have 4 dimensions.")
+    assert_that(index %>% is.integer)
     
-    # Slice images ----
-    img <- set_MakeImage(images, index)
+    # Slice images
+    image <- images[index,,,]
+    image %<>% set_MakeImage(index)
     lbl <- classes[index] %>% as.character() %>% ClassList[[.]]
     
-    # Plot image ----
+    # Plot image
     plot.new()
     lim <- par()
-    rasterImage(img, lim$usr[1], lim$usr[3], lim$usr[2], lim$usr[4], interpolate=FALSE)
+    rasterImage(image, lim$usr[1], lim$usr[3], lim$usr[2], lim$usr[4], interpolate=FALSE)
     title(lbl, font.main=2)
     
-    # Return ----
+    # Return
     return(invisible(NULL))
 }
 ```
@@ -436,23 +523,34 @@ tst_img <- tst_img/255
 - all elements of the all lists are names
 
 ```{r Instantiate Network Definition, eval=TRUE, echo=TRUE}
-InstantiateNetwork <- function(input=50, hidden=c(30,20,10), output=10) {
-    #' @title Add function title
-    #' @description Add function description.
-    #' @note Add a note for the developer.
-    #' @param input integer. What is Input1?
-    #' @param hidden vector of integers. What is Input1?
-    #' @param output integer. What is Input1?
-    #' @return What is being returned?
+set_InstantiateNetwork <- function(input=50, hidden=c(30,20,10), output=1) {
+    #' @title Instantiate the Network
+    #' @description Instantiate the network.
+    #' @note This is just to set up an empty network. Which is effectively a list of lists.
+    #' @param input `integer`. The number of nodes in the `input` layer of the network. Default value `50`.
+    #' @param hidden `vector`. The number of nodes in each `hidden` layer of the network. Default value `c(30,20,10)`.
+    #' @param output `integer`. The number of nodes in the `output` layer of the network. Default value `1`.
+    #' @return An instantiated network. A `list` of `lists`.
     #' @author chrimaho
+    #' @examples
+    #' # Works
+    #' set_InstantiateNetwork(
+    #'     input=50,
+    #'     hidden=c(30,20,10),
+    #'     output=1
+    #' )
     
-    # Validations ----
-    assert_that(IsWhole(input))
-    assert_that(is_vector(hidden))
-    assert_that(all(IsWhole(hidden)))
-    assert_that(IsWhole(output))
+    # Packages
+    require(assertthat)
     
-    # Set up ----
+    # Validations
+    assert_that(input %>% is.integer, msg="'input' must be type 'integer'.")
+    assert_that(hidden %>% is.vector, msg="'hidden' must be type 'vector'.")
+    assert_that(hidden %>% is.integer %>% all, msg="All elements of 'hidden' must be integers.")
+    assert_that((hidden > 0) %>% all, msg="All elements of 'hidden' must be greater than '0'.")
+    assert_that(output %>% is.integer, msg="'input' must be type 'integer'.")
+    
+    # Set up
     model = list()
     names = c(
         "input",
@@ -460,24 +558,24 @@ InstantiateNetwork <- function(input=50, hidden=c(30,20,10), output=10) {
         "output"
     )
     
-    # Loop ----
+    # Loop
     for (layer in names) {
         
         # Make layer
         model[[layer]] <- list(
-             "nodz"      = ""  #<-- Number of nodes in this layer.
-            ,"inpt"      = ""  #<-- Input matrix. Aka 'A_prev'. This is a duplicate of the activation of the previous layer, so for large networks this needs to be taken in to consideration.
-            ,"wgts"      = ""  #<-- Weights matrix. Aka 'W'.
-            ,"bias"      = ""  #<-- Bias vector. Aka 'b'.
-            ,"linr"      = ""  #<-- Linear matrix. Aka 'Z'. This is the result of the linear algebra between inpt, wgts and bias.
-            ,"acti"      = ""  #<-- Activation matrix. Aka 'A'. The result of applying an activation function to the linr matrix.
-            ,"acti_func" = ""  #<-- The activation function used.
-            ,"cost"      = ""  #<-- The overall cost of the model. This is a single value (the overall cost of the model), but is copied to each layer of the model.
-            ,"back_cost" = ""  #<-- Gradient of the cost vector. Aka 'dA_cost'.
-            ,"back_acti" = ""  #<-- Gradient of the Activation matrix. Aka 'dA'. The result of differentiation after having applied back propagation. with a given cost function.
-            ,"back_linr" = ""  #<-- Gradient of the Linear algebra matrix. Aka 'dZ'. The result of backwards linear differentiation back propagation.
-            ,"back_wgts" = ""  #<-- Gradient of the Weights matrix. Aka 'dW'. Also the result of back-prop.
-            ,"back_bias" = ""  #<-- Gradient of the Bias vector. Aka 'db'. Also the result of back-prop.
+            "nodz"      = "",  #<-- Number of nodes in this layer.
+            "inpt"      = "",  #<-- Input matrix. Aka 'A_prev'. This is a duplicate of the activation of the previous layer, so for large networks this needs to be taken in to consideration.
+            "wgts"      = "",  #<-- Weights matrix. Aka 'W'.
+            "bias"      = "",  #<-- Bias vector. Aka 'b'.
+            "linr"      = "",  #<-- Linear matrix. Aka 'Z'. This is the result of the linear algebra between inpt, wgts and bias.
+            "acti"      = "",  #<-- Activation matrix. Aka 'A'. The result of applying an activation function to the linr matrix.
+            "acti_func" = "",  #<-- The activation function used.
+            "cost"      = "",  #<-- The overall cost of the model. This is a single value (the overall cost of the model), but is copied to each layer of the model.
+            "back_cost" = "",  #<-- Gradient of the cost vector. Aka 'dA_cost'.
+            "back_acti" = "",  #<-- Gradient of the Activation matrix. Aka 'dA'. The result of differentiation after having applied back propagation. with a given cost function.
+            "back_linr" = "",  #<-- Gradient of the Linear algebra matrix. Aka 'dZ'. The result of backwards linear differentiation back propagation.
+            "back_wgts" = "",  #<-- Gradient of the Weights matrix. Aka 'dW'. Also the result of back-prop.
+            "back_bias" = ""   #<-- Gradient of the Bias vector. Aka 'db'. Also the result of back-prop.
         )
         
         # Set nodes
@@ -492,7 +590,7 @@ InstantiateNetwork <- function(input=50, hidden=c(30,20,10), output=10) {
         
     }
     
-    # Return ----
+    # Return
     return(model)
 }
 ```
@@ -510,53 +608,72 @@ network_model <- set_InstantiateNetwork(
 ## Weight Initialisation
 
 ```{r Weight Initialisation, eval=TRUE, echo=TRUE}
-InitialiserXavier <- function(nodes_in, nodes_out, order=6) {
+let_InitialiseXavier <- function(nodes_in, nodes_out, order=6) {
     #' @title Xavier Initialisation
-    #' @description Initialise the weights based on Xavier initialisation
-    #' @note Add a note for the developer.
-    #' @references https://towardsdatascience.com/weight-initialization-in-neural-networks-a-journey-from-the-basics-to-kaiming-954fb9b47c79
-    #' @references http://proceedings.mlr.press/v9/glorot10a/glorot10a.pdf
-    #' @param nodes_in integer. The number of nodes coming in to this layer (ie. number of nodes in previous layer).
-    #' @param nodes_out integer. The number of nodes outgoing from this layer (ie. number of nodes in this layer).
-    #' @param order integer. The order of magnitude for this equation. Defaults to `6`.
+    #' @description Initialise the weights based on the Xavier algorithm.
+    #' @param nodes_in `integer`. The number of nodes coming in to this layer (ie. the number of nodes in the previous layer).
+    #' @param nodes_out `integer`. The number of nodes outgoing from this layer (ie. the number of nodes in this layer).
+    #' @param order `integer`. The order of magnitude for this equation. Default value `6`.
     #' @return A floating point number.
+    #' @seealso https://towardsdatascience.com/weight-initialization-in-neural-networks-a-journey-from-the-basics-to-kaiming-954fb9b47c79
+    #' @seealso http://proceedings.mlr.press/v9/glorot10a/glorot10a.pdf
     #' @author chrimaho
+    #' @examples
+    #' # Works
+    #' let_InitialiseXavier(
+    #'     nodes_in=30,
+    #'     nodes_out=20,
+    #'     order=6
+    #' )
     
-    # Validations ----
-    assert_that(IsWhole(nodes_in))
-    assert_that(IsWhole(nodes_out))
-    assert_that(IsWhole(order))
+    # Packages
+    require(assertthat)
     
-    # Do work ----
+    # Validations
+    assert_that(nodes_in %>% is.integer, msg="'nodes_in' must be type 'integer'.")
+    assert_that(nodes_out %>% is.integer, msg="'nodes_out' must be type 'integer'.")
+    assert_that(order %>% is.integer, msg="'nodes_out' must be type 'integer'.")
+    
+    # Do work
     numer <- sqrt(order)
     denom <- sqrt(nodes_in + nodes_out)
     output <- numer/denom
     
-    # Return ----
+    # Return
     return(output)
 }
 
-InitialiserHe <- function(nodes_in, order=2) {
+
+let_InitialiseHe <- function(nodes_in, nodes_out, order=2) {
     #' @title He Initialisation
-    #' @description Initialise the weights based on Xavier initialisation
-    #' @note Add a note for the developer.
-    #' @references https://towardsdatascience.com/weight-initialization-in-neural-networks-a-journey-from-the-basics-to-kaiming-954fb9b47c79
-    #' @references http://proceedings.mlr.press/v9/glorot10a/glorot10a.pdf
-    #' @param nodes_in integer. The number of nodes coming in to this layer (ie. number of nodes in previous layer).
-    #' @param order integer. The order of magnitude for this equation. Defaults to `2`.
+    #' @description Initialise the weights based on the He initialisation algorithm.
+    #' @param nodes_in `integer`. The number of nodes coming in to this layer (ie. number of nodes in previous layer).
+    #' @param nodes_out `integer`. The number of nodes outgoing from this layer (ie. the number of nodes in this layer). !NOTE! This value is not used in this function, but is included to make the arguments of this function consistent with those of the other initialisation functions.
+    #' @param order `integer`. The order of magnitude for this equation. Default value `2`.
     #' @return A floating point number.
+    #' @seealso https://towardsdatascience.com/weight-initialization-in-neural-networks-a-journey-from-the-basics-to-kaiming-954fb9b47c79
+    #' @seealso http://proceedings.mlr.press/v9/glorot10a/glorot10a.pdf
     #' @author chrimaho
+    #' @examples
+    #' # Works
+    #' let_InitialiseHe(
+    #'     nodes_in=30,
+    #'     order=2
+    #' )
     
-    # Validations ----
-    assert_that(IsWhole(nodes_in))
-    assert_that(IsWhole(order))
+    # Packages
+    require(assertthat)
     
-    # Do work ----
+    # Validations
+    assert_that(nodes_in %>% is.integer, msg="'nodes_in' must be type 'integer'.")
+    assert_that(order %>% is.integer, msg="'order' must be type 'integer'.")
+    
+    # Do work
     numer <- order
     denom <- nodes_in
     output <- sqrt(numer/denom)
     
-    # Return ----
+    # Return
     return(output)
 }
 ```
@@ -564,22 +681,34 @@ InitialiserHe <- function(nodes_in, order=2) {
 ## Layer Initialisation
 
 ```{r Layer Initialisation, eval=TRUE, echo=TRUE}
-InitialiseLayer <- function(network_model, layer_index, initialisation_algorithm=NA, initialisation_order=2) {
-    #' @title Initialise Layer
-    #' @description Update the weights and biases of a given layer
-    #' @note Defaults the initialisation algorithm to the Xavier Initialisation.
-    #' @param network_model list. The model to be updated.
-    #' @param layer_index integer. The layer to be updated.
-    #' @param initialisation_algorithm string. The algorithm to be used for initialisation (eg. `xavier` or `he`).
-    #' @param initialisation_order integer. The order of magnitude for the initialisation (can be either an integer, or set to the number of layers defined).
-    #' @return The updated model, with the relevant layer updated.
+set_InitialiseLayer <- function(network_model, layer_index, initialisation_algorithm=NA, initialisation_order=6) {
+    #' @title Initialise layer within network.
+    #' @description Set the weights and biases of a given layer.
+    #' @note If `initialisation_algorithm` is `NA`, then the weights initialisation is only a random normal number, the result of running `rnorm()` as follows: `matrix(data=rnorm(nodes_in * nodes_out), nrow=nodes_in, ncol=nodes_out)`
+    #' @param network_model `list`. The model to be updated. The result of having run the `set_InstantiateNetwork()` function.
+    #' @param layer_index `integer`. The index of the layer to be initialised.
+    #' @param initialisation_algorithm `string`. The algorithm to be used for initialisation (eg. `xavier` or `he`). Default value `NA`.
+    #' @param initialisation_order `integer`. The order of magnitude for the initialisation (can be either an integer, or set to the number of layers defined). Default value `6`.
+    #' @return The `network_model`, with the relevant layer having been initialised.
     #' @author chrimaho
+    #' @examples
+    #' # Works
+    #' set_InitialiseLayer(
+    #'     network_model=network_model,
+    #'     layer_index=1,
+    #'     initialisation_algorithm="xavier",
+    #'     initialisation_order="6"
+    #' )
+    
+    # Packages
+    require(assertthat)
+    require(stringr)
     
     # Validations
-    assert_that(is_list(network_model))
-    assert_that(IsWhole(layer_index))
+    assert_that(network_model %>% is.list, msg="'network_model' must be type 'list'.")
+    assert_that(layer_index %>% is.integer, msg="'layer_index' must be type 'integer'.")
     assert_that(initialisation_algorithm %in% c("xavier", "he", NA), msg="'initialisation_algorithm' must be one of 'xavier', 'he', or 'NA'.")
-    assert_that(IsWhole(initialisation_order))
+    assert_that(initialisation_order %>% is.integer, msg="'layer_index' must be type 'integer'.")
     
     # Get layer names
     layer_prev <- names(network_model)[layer_index-1]
@@ -593,6 +722,9 @@ InitialiseLayer <- function(network_model, layer_index, initialisation_algorithm
     }
     nodes_out <- network_model %>% extract2(layer) %>% extract2("nodz")
     
+    # Set Seed
+    set.seed(1234)
+    
     # Initialise weight matrix
     w_matrix <- matrix(
         data=rnorm(nodes_in * nodes_out), 
@@ -600,14 +732,17 @@ InitialiseLayer <- function(network_model, layer_index, initialisation_algorithm
         ncol=nodes_out
     )
     
+    # Get initialisation algorithm
+    if (!is.na(initialisation_algorithm)) {
+        algorithm <- paste0("let_Initialise", str_to_title(initialisation_algorithm))
+    }
+    
     # Scale weights
     if (layer_index != 1) {
-        if (initialisation_algorithm == "xavier") {
-            w_matrix <- w_matrix * InitialiserXavier(nodes_in, nodes_out, order=initialisation_order)
-        } else if (initialisation_algorithm == "he") {
-            w_matrix <- w_matrix * InitialiserHe(nodes_in, order=initialisation_order)
-        } else {
+        if (is.na(initialisation_algorithm)) {
             w_matrix <- w_matrix
+        } else {
+            w_matrix <- w_matrix * get(algorithm)(nodes_in=nodes_in, nodes_out=nodes_out, order=initialisation_order)
         }
     }
     
@@ -630,20 +765,38 @@ InitialiseLayer <- function(network_model, layer_index, initialisation_algorithm
 ## Model Initialisation
 
 ```{r Model Initialisation, eval=TRUE, echo=TRUE, warning=FALSE}
-InitialiseModel <- function(network_model, initialisation_algorithm="xavier", initialisation_order="layers") {
+set_InitialiseModel <- function(network_model, initialisation_algorithm="xavier", initialisation_order="layers") {
     #' @title Initialise Model
-    #' @description Initialise each layer in the model.
-    #' @note 
-    #' @param network_model list. The model to be initialised.
-    #' @param initialisation_algorithm string. The initialisation algorithm to be used.
-    #' @param initialisation_order string or integer. The order of magnitude for the initialisation (either integer or set to the number of layers defined) 
-    #' @return The initialised model.
+    #' @description Initialise the model with all the necessary weights and biases.
+    #' @note Add a note for the developer.
+    #' @param network_model `list`. The model to be initialised.
+    #' @param initialisation_algorithm `string`. The initialisation algorithm to use for the weights. If `NA`, then will use the values from an `rnorm()` function. Default value `"xavier"`.
+    #' @param initialisation_order `integer` or `string`. The order of magnitude for the initialisation algorithm. Should be a number (ideally less than `10`), or the word `layers`, which will automatically calculate the order based in the number of hidden layers in the model. Default value `"layers"`.
+    #' @return The `network_model`, with all layers having been initialised.
     #' @author chrimaho
+    #' @examples
+    #' # Works
+    #' set_InitialiseModel(
+    #'     network_model,
+    #'     initialisation_algorithm="xavier",
+    #'     initialisation_order="layers"
+    #' )
+    
+    # Packages
+    require(assertthat)
     
     # Validations
-    assert_that(is_list(network_model))
-    assert_that(initialisation_algorithm %in% c("xavier", "he", NA), msg="'initialisation_algorithm' must be one of 'xavier', 'he', or 'NA'.")
-    assert_that(or(IsWhole(initialisation_order), is.string(initialisation_order)), msg="'initialisation_order' must be either type 'integer' or 'string'.")
+    assert_that(network_model %>% is.list, msg="'network_model' must be type 'list'.")
+    assert_that(or(is.string(initialisation_algorithm), is.na(initialisation_algorithm)), msg="'initialisation_algorithm' must be type 'string' or value 'NA'.")
+    assert_that(initialisation_algorithm %in% c("xavier","he",NA), msg="'initialisation_algorithm' must be one of 'xavier', 'he', or 'NA'.")
+    assert_that(or(is.integer(initialisation_order), is.string(initialisation_order)), msg="'initialisation_order' must be type 'integer' or 'string'.")
+    assert_that(network_model %>% names %>% extract(1) == "input", msg="The first layer of 'network_model' must be 'input'.")
+    assert_that(network_model %>% names %>% rev %>% extract(1) == "output", msg="The last layer of 'network_model' must be 'output'.")
+    for (name in network_model %>% names) {
+        if (!name %in% c("input","output")) {
+            assert_that(name %>% as.numeric %>% is.integer, msg="Each hidden layer in 'network_model' must be an integer value.")
+        }
+    }
     
     # Redefine 'initialisation_order'
     if (initialisation_order == "layers") {
@@ -652,7 +805,7 @@ InitialiseModel <- function(network_model, initialisation_algorithm="xavier", in
     
     # Initialise each layer
     for (layer_index in 1:length(names(network_model))) {
-        network_model <- InitialiseLayer(
+        network_model <- set_InitialiseLayer(
             network_model=network_model, 
             layer_index=layer_index, 
             initialisation_algorithm=initialisation_algorithm,
@@ -815,12 +968,42 @@ rm(mat_a, mat_b, mat_c, mat_d, mat_e, mat_f)
 ## Linear Component
 
 ```{r}
-LinearForward <- function(inpt, wgts, bias) {
+set_LinearForward <- function(inpt, wgts, bias) {
+    #' @title Linear Forward Algebra
+    #' @description Perform linear algebra on a layer during forward propagation.
+    #' @note Just like finding a gradient (`y=mx+b`), the output of this function takes `inpt * wgts + bias`.
+    #' @note To perform the matrix addition part, the `base::sweep()` function is used, which sweeps a vector linearly across a matrix. In this case we are using the second dimension for this, meaning to say that the bias is swept across each row of the `linr` matrix. And as each row is each node, then this is how the bias is being added.
+    #' @param inpt `matrix`. The input matrix for this layer. This is also the 'activation' from the previous layer. First dimension: Number of nodes in the previous layer. Second dimension: number of images being parsed in to the model.
+    #' @param wgts `matrix`. The weights matrix for this layer. The length of the first dimension of `wgts` MUST equal the length of the second dimension of the `inpt` matrix. First dimension: number of images being parsed in to the model. Second dimension: number of nodes in this layer. 
+    #' @param bias `vector` or single-column `matrix`. The bias for this layer. The length of this element MUST be equal to the second dimension of the `wgts` matrix. In other words, the length of the `bias` element is the number of nodes in this layer.
+    #' @return A `matrix` after performing linear algebra.
+    #' @author chrimaho
+    #' @examples
+    #' # Works
+    #' set_LinearForward(
+    #'     inpt,
+    #'     wgts,
+    #'     bias
+    #' )
     
+    # Packages
+    require(assertthat)
+    
+    # Validations
+    assert_that(inpt %>% is.matrix, msg="'inpt' must be type 'matrix'.")
+    assert_that(wgts %>% is.matrix, msg="'wgts' must be type 'matrix'.")
+    assert_that(bias %>% is.matrix, msg="'bias' must be type 'matrix'.")
+    assert_that(wgts %>% dim %>% extract(1) == inpt %>% dim %>% extract(2), msg="The length of the first dimension of 'wgts' MUST equal the length of the second dimension of 'inpt'.")
+    assert_that(bias %>% length == wgts %>% dim %>% extract(2), msg="The length of `bias` MUST equal the length of the second dimension of `wgts`.")
+    
+    # Perform matrix multiplication
     linr <- inpt %*% wgts
-    linr <- sweep(linr, 2, bias, "+")
-    return(linr)
     
+    # Add bias
+    linr <- sweep(linr, 2, bias, "+")
+    
+    # Return
+    return(linr)
 }
 ```
 
@@ -829,58 +1012,161 @@ LinearForward <- function(inpt, wgts, bias) {
 Check: [Activation Functions](https://www.desmos.com/calculator/rhx5tl8ygi)
 
 ```{r}
-sigmoid <- function(z) {
-    # References:
-    # https://kite.com/python/answers/how-to-calculate-a-logistic-sigmoid-function-in-python
-    # https://www.geeksforgeeks.org/implement-sigmoid-function-using-numpy/
-    a <- 1/(1+exp(-z))
-    return(a)
+let_ActivateSigmoid <- function(linr) {
+    #' @title Sigmoid Activation
+    #' @description Activate a matrix using the Sigmoid algorithm.
+    #' @note The `linr` is the result of running the `set_LinearForward()` function.
+    #' @param linr `matrix`. The matrix to be activated.
+    #' @return An activated matrix.
+    #' @seealso https://kite.com/python/answers/how-to-calculate-a-logistic-sigmoid-function-in-python
+    #' @seealso https://www.geeksforgeeks.org/implement-sigmoid-function-using-numpy/
+    #' @author chrimaho
+    #' @examples
+    #' # Works
+    #' let_ActivateSigmoid(
+    #'     linr
+    #' )
+    
+    # Packages
+    require(assertthat)
+    
+    # Validations
+    assert_that(linr %>% is.matrix, msg="'linr' must be type 'matrix'.")
+    
+    # Do work
+    acti <- 1/(1+exp(-linr))
+    
+    # Return
+    return(acti)
 }
 
-relu <- function(z) {
-    # References:
-    # https://medium.com/ai%C2%B3-theory-practice-business/a-beginners-guide-to-numpy-with-sigmoid-relu-and-softmax-activation-functions-25b840a9a272
-    a <- sapply(z, max, 0) %>% 
-        structure(dim=dim(z))
-    return(a)
+
+let_ActivateRelu <- function(linr) {
+    #' @title ReLU Activation
+    #' @description Activate a matrix using the Relu algorithm.
+    #' @note The `linr` is the result of running the `set_LinearForward()` function.
+    #' @param linr `matrix`. The matrix to be activated.
+    #' @return An activated matrix.
+    #' @seealso https://medium.com/ai%C2%B3-theory-practice-business/a-beginners-guide-to-numpy-with-sigmoid-relu-and-softmax-activation-functions-25b840a9a272
+    #' @author chrimaho
+    #' @examples
+    #' # Works
+    #' let_ActivateRelu(
+    #'     linr
+    #' )
+    
+    # Packages
+    require(assertthat)
+    
+    # Validations
+    assert_that(linr %>% is.matrix, msg="'linr' must be type 'matrix'.")
+    
+    # Do work
+    acti <- sapply(linr, max, 0) %>% 
+        structure(dim=dim(linr))
+    
+    # Return
+    return(acti)
 }
 
-softmax <- function(z) {
-    # Reference: 
-    # https://medium.com/ai%C2%B3-theory-practice-business/a-beginners-guide-to-numpy-with-sigmoid-relu-and-softmax-activation-functions-25b840a9a272
+
+let_ActivateSoftmax <- function(linr) {
+    #' @title Softmax Activation
+    #' @description Activate a matrix using the Softmax algorithm.
+    #' @note The `linr` is the result of running the `set_LinearForward()` function.
+    #' @param linr `matrix`. The matrix to be activated.
+    #' @return An activated matrix.
+    #' @seealso https://medium.com/ai%C2%B3-theory-practice-business/a-beginners-guide-to-numpy-with-sigmoid-relu-and-softmax-activation-functions-25b840a9a272
+    #' @author chrimaho
+    #' @examples
+    #' # Works
+    #' let_ActivateSoftmax(
+    #'     linr
+    #' )
+    
+    # Packages
+    require(assertthat)
+    
+    # Validations
+    assert_that(linr %>% is.matrix, msg="'linr' must be type 'matrix'.")
+    
+    # Do work
     expo <- exp(z)
     expo_sum <- sum(exp(z))
-    a <- expo/expo_sum
-    return(a)
+    acti <- expo/expo_sum
+    
+    # Return
+    return(acti)
 }
 
-swish <- function(z, beta=0.1) {
-    # References: 
-    # https://arxiv.org/pdf/1710.05941.pdf
-    # https://www.bignerdranch.com/blog/implementing-swish-activation-function-in-keras/
-    a <- z * (beta*z)
-    return(a)
-}
 
+let_ActivateSwish <- function(linr, beta=0.1) {
+    #' @title Swish Activation
+    #' @description Activate a matrix using the Swish algorithm.
+    #' @note The `linr` is the result of running the `set_LinearForward()` function.
+    #' @param linr `matrix`. The matrix to be activated.
+    #' @param beta `numeric`. The beta amount to be used.
+    #' @return An activated matrix.
+    #' @seealso https://arxiv.org/pdf/1710.05941.pdf
+    #' @seealso https://www.bignerdranch.com/blog/implementing-swish-activation-function-in-keras/
+    #' @author chrimaho
+    #' @examples
+    #' # Works
+    #' let_ActivateSwish(
+    #'     linr
+    #' )
+    
+    # Packages
+    require(assertthat)
+    
+    # Validations
+    assert_that(linr %>% is.matrix, msg="'linr' must be type 'matrix'.")
+    
+    # Do work
+    acti <- linr * (beta * linr)
+    
+    # Return
+    return(acti)
+}
 ```
 
 ## Forward Prop
 
 ```{r}
-ForwardProp <- function(network_model, data_in, activation_hidden="relu", activation_final="sigmoid") {
+set_ForwardProp <- function(network_model, data_in, activation_hidden="relu", activation_final="sigmoid") {
+    #' @title Run Forward Propagation
+    #' @description Run forward propagation over a model (`network_model`) with a given input data set (`data_in`) and using different activations for the hidden and output layers (`activation_hidden` & `activation_final`).
+    #' @note Add a note for the developer.
+    #' @param network_model `list`. The model to be used. Note, must be instantiated and initialised, after having run the `set_InitialiseModel()` function.
+    #' @param data_in `array`. A 4-D array containing the images for propagation. Note, the dimensions must be: `images`x`width`x`height`x`colour`.
+    #' @param activation_hidden `string`. The activation algorithm to use for the hidden layers. Must be one of: 'sigmoid', 'relu', 'softmax', or 'swish'. Default value `relu`.
+    #' @param activation_final `string`. The activation algorithm to use for the final layer. Must be one of: 'sigmoid', 'relu', 'softmax', or 'swish'. Default value `sigmoid`.
+    #' @return The same `network_model`, after having completed forward propagation.
+    #' @author chrimaho
+    #' @examples
+    #' # Works
+    #' set_ForwardProp(
+    #'     network_model,
+    #'     data_in,
+    #'     activation_hidden,
+    #'     activation_final
+    #' )
+    
+    # Packages
+    require(assertthat)
     
     # Validations
-    assert_that(is.array(data_in))
-    assert_that(is.list(network_model))
-    assert_that(names(network_model)[1]=="input")
-    assert_that(rev(names(network_model))[1]=="output")
-    assert_that(is.string(activation_hidden))
-    assert_that(is.string(activation_final))
-    assert_that(activation_hidden %in% c("sigmoid","relu","softmax","swish"))
-    assert_that(activation_final %in% c("sigmoid","relu","softmax","swish"))
-    for (name in names(network_model)) {
+    assert_that(network_model %>% is.list, msg="'network_model' must be type 'list'.")
+    assert_that(data_in %>% is.array, msg="'data_in' must be type 'array'.")
+    assert_that(is.string(activation_hidden), msg="'activation_hidden' must be type 'string'.")
+    assert_that(is.string(activation_final), msg="'activation_final' must be type 'string'.")
+    assert_that(activation_hidden %in% c("sigmoid","relu","softmax","swish"), msg="'activation_hidden' must be one of: 'sigmoid', 'relu', 'softmax', or 'swish'.")
+    assert_that(activation_final %in% c("sigmoid","relu","softmax","swish"), msg="'activation_final' must be one of: 'sigmoid', 'relu', 'softmax', or 'swish'.")
+    assert_that(network_model %>% names %>% extract(1) == "input", msg="The first layer of 'network_model' must be 'input'.")
+    assert_that(network_model %>% names %>% rev %>% extract(1) == "output", msg="The last layer of 'network_model' must be 'output'.")
+    for (name in network_model %>% names) {
         if (!name %in% c("input","output")) {
-            assert_that(IsWhole(as.numeric(name)))
+            assert_that(name %>% as.numeric %>% is.integer, msg="Each hidden layer in 'network_model' must be an integer value.")
         }
     }
     
@@ -909,10 +1195,10 @@ ForwardProp <- function(network_model, data_in, activation_hidden="relu", activa
             
             # Activate
             if (layr=="output") {
-                acti <- get(activation_final)(linr)
+                acti <- get(paste0("let_Activate",str_to_title(activation_final)))(linr)
                 network_model[[layr]][["acti_func"]] <- activation_final
             } else {
-                acti <- get(activation_hidden)(linr)
+                acti <- get(paste0("let_Activate",str_to_title(activation_hidden)))(linr)
                 network_model[[layr]][["acti_func"]] <- activation_hidden
             }
             
@@ -928,13 +1214,14 @@ ForwardProp <- function(network_model, data_in, activation_hidden="relu", activa
     # Return
     return(network_model)
 }
+
 ```
 
 ## Run
 
 ```{r}
 tic()
-network_model <- ForwardProp(network_model, trn_img, "relu", "sigmoid")
+network_model <- set_ForwardProp(network_model, trn_img, "relu", "sigmoid")
 toc()
 ```
 
@@ -943,13 +1230,31 @@ toc()
 ## Set Up
 
 ```{r}
-ComputeCost <- function(pred, true, epis=1e-10) {
+get_ComputeCost <- function(pred, true, epsi=1e-10) {
+    #' @title Compute the Cost
+    #' @description Compute the cost of a given network.
+    #' @note Uses a tiny epsilon value in order to account for perfect predictions.
+    #' @param pred `matrix`. The matrix of values to use for the prediction.
+    #' @param true `matrix`. The matrix of values to use for the truth.
+    #' @param epsi `number`. A very small epsilon value, in order to adjust for perfect predictions.
+    #' @return A single floating point number.
+    #' @author chrimaho
+    #' @examples
+    #' # Works
+    #' get_ComputeCost(
+    #'     pred,
+    #'     true,
+    #'     epsi
+    #' )
+    
+    # Packages
+    require(assertthat)
     
     # Validations
-    assert_that(is.matrix(pred))
-    assert_that(is.matrix(true))
-    assert_that(is.number(epis))
-    assert_that(epis < 0.0001, msg="'epis' should be a very small epsilom value.")
+    assert_that(pred %>% is.matrix, msg="'pred' must be type 'matrix'.")
+    assert_that(true %>% is.matrix, msg="'true' must be type 'matrix'.")
+    assert_that(epsi %>% is.number, msg="'epsi' must be type 'number'.")
+    assert_that(epsi > 0.0001, msg="'epsi' should be a very small epsilon value.")
     
     # Get number of samples
     samp <- length(true)
@@ -961,10 +1266,8 @@ ComputeCost <- function(pred, true, epis=1e-10) {
     for (i in 1:samp) {
         
         # Adjust for perfect predictions.
-        pred <<- pred
-        i <<- i
-        if (pred[i]==1) {pred[i] <- pred[i]-epis} #pred[i] %<>% subtract(epis)
-        if (pred[i]==0) {pred[i] <- pred[i]+epis} #pred[i] %<>% add(epis)
+        if (pred[i]==1) {pred[i] %<>% subtract(epsi)}
+        if (pred[i]==0) {pred[i] %<>% add(epsi)}
         
         # Calculate totals
         total_cost <- total_cost - ((true[i] * log(pred[i]) + (1-true[i]) * log(1-pred[i])))
@@ -976,16 +1279,44 @@ ComputeCost <- function(pred, true, epis=1e-10) {
     
     # Return
     return(cost)
-    
 }
 
-ApplyCost <- function(network_model, cost) {
+
+set_ApplyCost <- function(network_model, cost) {
+    #' @title Apply Cost to model
+    #' @description Apply the calculated cost to each layer of a given `network_model`.
+    #' @note It simply applies the same value to the `cost` section of each layer.
+    #' @param network_model `list`. The network model that should have the cost applied to it. It must be an instantiated and initialised model, which has already had the `set_ForwardProp` function applied to it. Default value `NA`.
+    #' @param cost `number`. The cost that has been calculated for the model. It is the result of running the `get_ComputeCost()` function. Default value `NA`.
+    #' @return The `network_model`, with the cost value applied to each layer.
+    #' @author chrimaho
+    #' @examples
+    #' # Works
+    #' set_ApplyCost(
+    #'     network_model=NA,
+    #'     cost=NA
+    #' )
+    
+    # Packages
+    require(assertthat)
+    
+    # Validations
+    assert_that(network_model %>% is.list, msg="'network_model' must be type 'list'.")
+    assert_that(cost %>% is.number, msg="'cost' must be type 'number'.")
+    assert_that(network_model %>% names %>% extract(1) == "input", msg="The first layer of 'network_model' must be 'input'.")
+    assert_that(network_model %>% names %>% rev %>% extract(1) == "output", msg="The last layer of 'network_model' must be 'output'.")
+    for (name in network_model %>% names) {
+        if (!name %in% c("input","output")) {
+            assert_that(name %>% as.numeric %>% is.integer, msg="Each hidden layer in 'network_model' must be an integer value.")
+        }
+    }
     
     # Apply back to the model
-    for (layer in names(network_model)) {
+    for (layer in network_model %>% names) {
         network_model[[layer]][["cost"]] <- cost
     }
     
+    # Return
     return(network_model)
 }
 ```
@@ -993,7 +1324,7 @@ ApplyCost <- function(network_model, cost) {
 ## Run
 
 ```{r}
-network_model <- ApplyCost(network_model, ComputeCost(network_model[["output"]][["acti"]], trn_cls))
+network_model <- set_ApplyCost(network_model, ComputeCost(network_model[["output"]][["acti"]], trn_cls))
 ```
 
 # Backward Propogation
@@ -1003,18 +1334,74 @@ network_model <- ApplyCost(network_model, ComputeCost(network_model[["output"]][
 ### Set
 
 ```{r}
-DifferentiateCost <- function(pred, true) {
+get_DifferentiateCost <- function(pred=NA, true=NA) {
+    #' @title Differentiate Cost Value
+    #' @description Differentiate the Cost value.
+    #' @note Simple differentiation function.
+    #' @param pred `matrix`. The matrix of predicted values.
+    #' @param true `matrix`. The matrix of true values.
+    #' @return A floating point vlue.
+    #' @author chrimaho
+    #' @examples
+    #' # Works
+    #' get_DifferentiateCost(
+    #'     pred,
+    #'     true
+    #' )
+    
+    # Packages
+    require(assertthat)
+    
+    # Validations
+    assert_that(pred %>% is.matrix, msg="'pred' must be type 'matrix'.")
+    assert_that(true %>% is.matrix, msg="'true' must be type 'matrix'.")
+    
+    # Do work
     diff_cost <- -(divide_by(true, pred) - divide_by(1-true, 1-pred))
+    
+    # Return
     return(diff_cost)
 }
 
-ApplyDifferentiateCost <- function(network_model, cost_differential) {
+
+set_ApplyDifferentiateCost <- function(network_model, cost_differential) {
+    #' @title Apply Cost Differential to the Network
+    #' @description Apply the calculated Cost Differential function to the given network.
+    #' @note Applies the same value to each layer of the network. The `cost_differential` is transposed for the `output` layer by running the `t()` function, which is necessary for the back-propagation parts.
+    #' @param network_model `list`. The model that the cost differential should be applied to. Must be a model that has been instantiated and initialised, and has had the `set_ForwardProp()` function run over it.
+    #' @param cost_differential `number`. The differentiated cost for the given model. The result of running the `get_DifferentiateCost()` function.
+    #' @return The `network_model`, after having the `cost_differential` applied to each layer..
+    #' @author chrimaho
+    #' @examples
+    #' # Works
+    #' set_ApplyDifferentiateCost(
+    #'     network_model,
+    #'     cost_differential
+    #' )
+    
+    # Packages
+    require(assertthat)
+    
+    # Validations
+    assert_that(network_model %>% is.list, msg="'network_model' must be type 'list'.")
+    assert_that(cost_differential %>% is.number, msg="'cost_differential' must be type 'number'.")
+    assert_that(network_model %>% names %>% extract(1) == "input", msg="The first layer of 'network_model' must be 'input'.")
+    assert_that(network_model %>% names %>% rev %>% extract(1) == "output", msg="The last layer of 'network_model' must be 'output'.")
+    for (name in network_model %>% names) {
+        if (!name %in% c("input","output")) {
+            assert_that(name %>% as.numeric %>% is.integer, msg="Each hidden layer in 'network_model' must be an integer value.")
+        }
+    }
+    
+    # Do work
     for (layer in names(network_model)) {
         network_model[[layer]][["back_cost"]] <- cost_differential
         if (layer=="output") {
             network_model[[layer]][["back_acti"]] <- network_model[[layer]][["back_cost"]] %>% t()
         }
     }
+    
+    # Return
     return(network_model)
 }
 ```
@@ -1022,47 +1409,130 @@ ApplyDifferentiateCost <- function(network_model, cost_differential) {
 ### Run
 
 ```{r}
-network_model <- ApplyDifferentiateCost(network_model, DifferentiateCost(network_model[["output"]][["acti"]], trn_cls))
+network_model <- set_ApplyDifferentiateCost(network_model, get_DifferentiateCost(network_model[["output"]][["acti"]], trn_cls))
 ```
 
 ## Differentiate Linear
 
 ```{r}
-DifferentiateLinear <- function(back_linr_curr, acti_prev, wgts, bias) {
+get_DifferentiateLinear <- function(back_linr_curr, acti_prev, wgts, bias) {
+    #' @title Differentiate the linear algebra part
+    #' @description For a given layer, differentiate the linear algebra parts.
+    #' @note Do the weights of current layer first, then bias of the current layer, then activation of the the previous layer.
+    #' @param back_linr_curr `matrix`. The differentiated linear matrix of the next layer.
+    #' @param acti_prev `matrix`. The activate matrix from the previous layer.
+    #' @param wgts `matrix`. The weights matrix of the current layer.
+    #' @param bias `matrix`. The bias matrix of the current layer.
+    #' @return A list of three matrices. 1) `diff_acti_prev`: The differentiated activation matrix of the previous layer; 2) `diff_wgts`: The differentiated weights matrix of the current layer; 3) `diff_bias`: The differentiated bias matrix of the current layer.
+    #' @author chrimaho
+    #' @examples
+    #' # Works
+    #' get_DifferentiateLinear(
+    #'     back_linr_curr,
+    #'     acti_prev,
+    #'     wgts,
+    #'     bias
+    #' )
     
-    samp <- dim(acti_prev)[2]
+    # Packages
+    require(assertthat)
     
+    # Validations
+    assert_that(back_linr_curr %>% is.matrix, msg="'back_linr_curr' must be type 'matrix'.")
+    assert_that(acti_prev %>% is.matrix, msg="'acti_prev' must be type 'matrix'.")
+    assert_that(wgts %>% is.matrix, msg="'wgts' must be type 'matrix'.")
+    assert_that(bias %>% is.matrix, msg="'bias' must be type 'matrix'.")
+    
+    # get number of samples
+    samp <- acti_prev %>% dim %>% extract(2)
+    
+    # Check
     # print(dim(back_linr_curr))
     # print(dim(acti_prev))
     # print(dim(wgts))
     
+    # Differentiate weights
     diff_wgts <- 1/samp * (back_linr_curr %*% acti_prev)
+    
+    # Differentiate bias
     diff_bias <- 1/samp * rowSums(back_linr_curr, dims=1)
+    
+    # Differentiate activation
     diff_acti_prev <- wgts %*% back_linr_curr
     
+    # Consolidate in to one list
     list_linr <- list(
         diff_acti_prev, 
         diff_wgts, 
         diff_bias
     )
     
+    # Return
     return(list_linr)
-    
 }
 ```
 
 ## Differentiate Activation
 
 ```{r}
-relu_backward <- function(diff_acti_curr, linr_curr) {
+let_BackwardActivateRelu <- function(diff_acti_curr, linr_curr) {
+    #' @title Get Backwards ReLU Activation
+    #' @description Get the differentiated ReLU activation .
+    #' @note Simply reversing the work of the `let_ActivateRelu()` function.
+    #' @param diff_acti_curr `matrix`. The differentiated activation matrix of the current layer.
+    #' @param linr_curr `matrix`. The linear algebra matrix in the current layer.
+    #' @return The differentiated linear algebra matrix of the current layer.
+    #' @author chrimaho
+    #' @examples
+    #' # Works
+    #' let_BackwardActivateRelu(
+    #'     diff_acti_curr,
+    #'     linr_curr
+    #' )
+    
+    # Packages
+    require(assertthat)
+    
+    # Validations
+    assert_that(diff_acti_curr %>% is.matrix, msg="'diff_acti_curr' must be type 'matrix'.")
+    assert_that(linr_curr %>% is.matrix, msg="'linr_curr' must be type 'matrix'.")
+    
+    # Do work
     diff_linr_curr <- diff_acti_curr
     diff_linr_curr[linr_curr<=0] <- 0
+    
+    # Return
     return(diff_linr_curr)
 }
 
-sigmoid_backward <- function(diff_acti_curr, linr_curr) {
+
+let_BackwardActivateSigmoid <- function(diff_acti_curr, linr_curr) {
+    #' @title Get Backwards Sigmoid Activation
+    #' @description Get the differentiated Sigmoid activation .
+    #' @note Simply reversing the work of the `let_ActivateSigmoid()` function. Need to transpose a couple of times in order to ensure that the matrices are all aligned correctly.
+    #' @param diff_acti_curr `matrix`. The differentiated activation matrix of the current layer.
+    #' @param linr_curr `matrix`. The linear algebra matrix in the current layer.
+    #' @return The differentiated linear algebra matrix of the current layer.
+    #' @author chrimaho
+    #' @examples
+    #' # Works
+    #' let_BackwardActivateRelu(
+    #'     diff_acti_curr,
+    #'     linr_curr
+    #' )
+    
+    # Packages
+    require(assertthat)
+    
+    # Validations
+    assert_that(diff_acti_curr %>% is.matrix, msg="'diff_acti_curr' must be type 'matrix'.")
+    assert_that(linr_curr %>% is.matrix, msg="'linr_curr' must be type 'matrix'.")
+    
+    # Do work
     temp <- 1/(1+exp(-linr_curr))
     diff_linr_curr <- t(diff_acti_curr) * temp * (1-temp)
+    
+    # Return
     return(t(diff_linr_curr))
 }
 ```
@@ -1072,7 +1542,31 @@ sigmoid_backward <- function(diff_acti_curr, linr_curr) {
 ### Set
 
 ```{r}
-BackwardProp <- function(network_model) {
+set_BackwardProp <- function(network_model) {
+    #' @title Run Back Propagation
+    #' @description Apply Back Propagation over a given model.
+    #' @note Skips the `input` layer, because that doesn't need to be back-propagated. Also, it runs through each layer in reverse; in the same way that the `set_ForwardProp()` function works from start to end, the `set_BackwardProp()` function works from end to start.
+    #' @param network_model `list`. The model to run back-propagation over.
+    #' @return The same `network_model`, but having had back-propagation applied to it.
+    #' @author chrimaho
+    #' @examples
+    #' # Works
+    #' set_BackwardProp(
+    #'     network_model
+    #' )
+    
+    # Packages
+    require(assertthat)
+    
+    # Validations
+    assert_that(network_model %>% is.list, msg="'network_model' must be type 'list'.")
+    assert_that(network_model %>% names %>% extract(1) == "input", msg="The first layer of 'network_model' must be 'input'.")
+    assert_that(network_model %>% names %>% rev %>% extract(1) == "output", msg="The last layer of 'network_model' must be 'output'.")
+    for (name in network_model %>% names) {
+        if (!name %in% c("input","output")) {
+            assert_that(name %>% as.numeric %>% is.integer, msg="Each hidden layer in 'network_model' must be an integer value.")
+        }
+    }
     
     # Loop through each layer in reverse order
     for (layr_indx in network_model %>% names %>% length %>% 1:. %>% rev) {
@@ -1091,7 +1585,7 @@ BackwardProp <- function(network_model) {
         wgts_curr <- network_model[[layr_curr]][["wgts"]]
         bias_curr <- network_model[[layr_curr]][["bias"]]
         acti_prev <- network_model[[layr_prev]][["acti"]]
-        acti_func_back <- network_model[[layr_curr]][["acti_func"]] %>% paste0("_backward")
+        acti_func_back <- network_model[[layr_curr]][["acti_func"]] %>% str_to_title %>% paste0("let_Backward", .)
         diff_acti_curr <- network_model[[layr_curr]][["back_acti"]]
         diff_linr_curr <- matrix()
         diff_acti_prev <- matrix()
@@ -1121,25 +1615,53 @@ BackwardProp <- function(network_model) {
     }
     
     return(network_model)
-    
 }
 ```
 
 ### Run
 
 ```{r}
-network_model <- BackwardProp(network_model)
+network_model <- set_BackwardProp(network_model)
 ```
 
 # Update Model Parameters
 
 ```{r}
-UpdateModel <- function(network_model, learning_rate) {
+set_UpdateModel <- function(network_model, learning_rate=0.001) {
+    #' @title Update the Model
+    #' @description Update the `network_model` by taking a number of 'steps', which is effectively updating the weights and biases by multiplying the matrices by a given learning rate (`learning_rate`).
+    #' @note The `grad_step_weights` element is transposed to ensure it is in the correct orientation.
+    #' @param network_model `list`. The network model to be updated.
+    #' @param learning_rate `number`. The learning rate that the parameters should be updated by. It should be a small decimal number. Default value `0.001`.
+    #' @return The same `network_model`, after having the parameters (`wgts` & `bias`) updated.
+    #' @author chrimaho
+    #' @examples
+    #' # Works
+    #' set_UpdateModel(
+    #'     network_model,
+    #'     learning_rate=0.001
+    #' )
     
-    for (index in 1:length(names(network_model))) {
+    # Packages
+    require(assertthat)
+    
+    # Validations
+    assert_that(network_model %>% is.list, msg="'network_model' must be type 'list'.")
+    assert_that(learning_rate %>% is.number, msg="'learning_rate' must be type 'number'.")
+    assert_that(between(learning_rate, 0, 1), msg="'learning_rate' must be between '0' and '1'.")
+    assert_that(network_model %>% names %>% extract(1) == "input", msg="The first layer of 'network_model' must be 'input'.")
+    assert_that(network_model %>% names %>% rev %>% extract(1) == "output", msg="The last layer of 'network_model' must be 'output'.")
+    for (name in network_model %>% names) {
+        if (!name %in% c("input","output")) {
+            assert_that(name %>% as.numeric %>% is.integer, msg="Each hidden layer in 'network_model' must be an integer value.")
+        }
+    }
+    
+    # Do work
+    for (index in network_model %>% names %>% length %>% 1:.) {
         
         # Get layer name
-        layr <- names(network_model)[index]
+        layr <- network_model %>% names %>% extract(index)
         
         # Skip 'input' layer
         if (layr=="input") next
@@ -1154,13 +1676,13 @@ UpdateModel <- function(network_model, learning_rate) {
         
     }
     
+    # Return
     return(network_model)
-    
 }
 ```
 
 ```{r}
-network_model <- UpdateModel(network_model, 0.01)
+network_model <- set_UpdateModel(network_model, 0.01)
 ```
 
 # Run the model
@@ -1168,13 +1690,62 @@ network_model <- UpdateModel(network_model, 0.01)
 ## Set Up
 
 ```{r}
-TrainModel <- function(x_train, y_train,
-                       input_nodes=dim(x_train)[2], hidden_nodes=c(100, 50, 10), output_nodes=1,
-                       initialisation_algorithm="xavier", initialisation_order="layers",
-                       epochs=500, learning_rate=0.001,
-                       activation_hidden="relu", activation_final="sigmoid",
-                       verbosity=NA
-                       ) {
+let_TrainModel <- function(x_train, y_train,
+                           input_nodes=dim(x_train)[2], hidden_nodes=c(100, 50, 10), output_nodes=1,
+                           initialisation_algorithm="xavier", initialisation_order="layers",
+                           epochs=500, learning_rate=0.001,
+                           activation_hidden="relu", activation_final="sigmoid",
+                           verbosity=NA
+                           ) {
+    #' @title Train network model
+    #' @description Parse in the relevant parameters, and then instantiate, initialise, forward propagate, assess, differentiate, backward propagate and update model. Then repeat this process `epoch` number of times.
+    #' @note The model will be re-created every time this function is run.
+    #' @param x_train `array`. The 4-D array of images for training.
+    #' @param y_train `array`. The 2-D array of labels for each image.
+    #' @param input_nodes `integer`.
+    #' @param hidden_nodes `vector` of `integer`s.
+    #' @param output_nodes `integer`.
+    #' @param initialisation_algorithm `string` or `NA`.
+    #' @param initialisation_order `integer` or `string`.
+    #' @param epochs `integer`.
+    #' @param learning_rate `number`.
+    #' @param activation_hidden `string`.
+    #' @param activation_final `string`.
+    #' @param verbosity `integer` or `NA`.
+    #' @return A list containing the `results`, and the final trained `network_model`.
+    #' @author chrimaho
+    #' @examples
+    #' # Works
+    #' let_TrainModel(
+    #'     x_train,
+    #'     y_train
+    #' )
+    
+    # Packages
+    require(assertthat)
+    
+    # Validations
+    assert_that(x_train %>% is.NA, msg="'x_train' must be type 'array'.")
+    assert_that(y_train %>% is.NA, msg="'y_train' must be type 'array'.")
+    assert_that(input_nodes %>% is.integer, msg="'input_nodes' must be type 'integer'.")
+    assert_that(hidden_nodes %>% is.vector, msg="'hidden_nodes' must be type 'vector'.")
+    assert_that(hidden_nodes %>% is.integer %>% all, msg="All elements of 'hidden_nodes' must be integers.")
+    assert_that((hidden_nodes > 0) %>% all, msg="All elements of 'hidden_nodes' must be greater than '0'.")
+    assert_that(output_nodes %>% is.integer, msg="'input' must be type 'integer'.")
+    assert_that(or(is.string(initialisation_algorithm), is.na(initialisation_algorithm)), msg="'initialisation_algorithm' must be type 'string' or value 'NA'.")
+    assert_that(initialisation_algorithm %in% c("xavier","he",NA), msg="'initialisation_algorithm' must be one of 'xavier', 'he', or 'NA'.")
+    assert_that(or(is.integer(initialisation_order), is.string(initialisation_order)), msg="'initialisation_order' must be type 'integer' or 'string'.")
+    assert_that(epochs %>% is.integer, msg="'epochs' must be type 'integer'.")
+    assert_that(learning_rate %>% is.number, msg="'learning_rate' must be type 'number'.")
+    assert_that(between(learning_rate, 0, 1), msg="'learning_rate' must be between '0' and '1'.")
+    assert_that(is.string(activation_hidden), msg="'activation_hidden' must be type 'string'.")
+    assert_that(is.string(activation_final), msg="'activation_final' must be type 'string'.")
+    assert_that(activation_hidden %in% c("sigmoid","relu","softmax","swish"), msg="'activation_hidden' must be one of: 'sigmoid', 'relu', 'softmax', or 'swish'.")
+    assert_that(activation_final %in% c("sigmoid","relu","softmax","swish"), msg="'activation_final' must be one of: 'sigmoid', 'relu', 'softmax', or 'swish'.")
+    assert_that(or(is.integer(verbosity), is.na(verbosity)), msg="'verbosity' must be type 'integer' or value 'NA'.")
+    
+    # Begin the timer
+    time_begin <- Sys.time()
     
     # Set return values
     output <- list(
@@ -1186,14 +1757,14 @@ TrainModel <- function(x_train, y_train,
     )
     
     # Instantiate
-    network_model <- InstantiateNetwork(
+    network_model <- set_InstantiateNetwork(
         input=input_nodes,
         hidden=hidden_nodes, 
         output=output_nodes
     )
     
     # Initialise
-    network_model <- InitialiseModel(
+    network_model <- set_InitialiseModel(
         network_model=network_model, 
         initialisation_algorithm=initialisation_algorithm, 
         initialisation_order=initialisation_order
@@ -1203,7 +1774,7 @@ TrainModel <- function(x_train, y_train,
     for (epoch in 1:epochs) {
         
         # Forward Prop
-        network_model <- ForwardProp(
+        network_model <- set_ForwardProp(
             network_model=network_model, 
             data_in=x_train, 
             activation_hidden=activation_hidden, 
@@ -1211,18 +1782,22 @@ TrainModel <- function(x_train, y_train,
         )
         
         # Get cost
-        cost <- ComputeCost(network_model[["output"]][["acti"]], y_train, 1e-10)
+        cost <- get_ComputeCost(
+            network_model[["output"]][["acti"]], 
+            y_train, 
+            1e-10
+        )
         
         # Apply cost
-        network_model <- ApplyCost(
+        network_model <- set_ApplyCost(
             network_model=network_model, 
             cost=cost
         )
         
-        # Print cost
+        # Print update
         if (!is.na(verbosity)) {
             if (epoch %% verbosity == 0) {
-                print("With learning rate {}, at epoch {}, the cost is: {}" %>% str_Format(learning_rate, epoch, cost))
+                print("With learning rate {}, at epoch {}, the cost is: {}\n  Elapsed {}" %>% str_Format(learning_rate, epoch, cost, Sys.time()-time_begin))
             }
         }
         
@@ -1230,16 +1805,16 @@ TrainModel <- function(x_train, y_train,
         output[["results"]][["cost"]] %<>% c(cost)
         
         # Differentiate cost
-        network_model <- ApplyDifferentiateCost(
+        network_model <- set_ApplyDifferentiateCost(
             network_model=network_model, 
             DifferentiateCost(network_model[["output"]][["acti"]], y_train)
         )
         
         # Backprop
-        network_model <- BackwardProp(network_model)
+        network_model <- set_BackwardProp(network_model)
         
         # Update parameters
-        network_model <- UpdateModel(
+        network_model <- set_UpdateModel(
             network_model=network_model, 
             learning_rate=learning_rate
         )
@@ -1250,12 +1825,13 @@ TrainModel <- function(x_train, y_train,
     
     return(output)
 }
+
 ```
 
 ## Run `Xavier`
 
 ```{r, fig.width=15, fig.height=8}
-training_output <- TrainModel(
+training_output <- let_TrainModel(
     x_train=trn_img, y_train=trn_cls,
     input_nodes=dim(trn_img)[2], hidden_nodes=c(100,75,50,30,20), output_nodes=1,
     initialisation_algorithm="xavier", initialisation_order="layers",
@@ -1278,7 +1854,7 @@ training_cost %>%
 ## Run `He`
 
 ```{r, fig.width=15, fig.height=8}
-training_output <- TrainModel(
+training_output <- let_TrainModel(
     x_train=trn_img, y_train=trn_cls,
     input_nodes=dim(trn_img)[2], hidden_nodes=c(100,75,50,30,20), output_nodes=1,
     initialisation_algorithm="he", initialisation_order=2,
@@ -1303,7 +1879,7 @@ training_cost %>%
 $$ \begin{bmatrix} `r matrix(1:12, ncol=3)` \end{bmatrix} $$
 
 ```{r, fig.width=15, fig.height=8}
-training_output <- TrainModel(
+training_output <- let_TrainModel(
     x_train=trn_img, y_train=trn_cls,
     input_nodes=dim(trn_img)[2], hidden_nodes=c(1000,500,100,50,1), output_nodes=1,
     initialisation_algorithm="he", initialisation_order=2,
@@ -1328,25 +1904,63 @@ training_cost %>%
 ## Set Up
 
 ```{r}
-get_Prediction <- function(x_test, y_test, network_model) {
+get_Prediction <- function(x_test, y_test, network_model, threshold=0.5) {
+    #' @title Get Prediction from Model
+    #' @description Use the `network_model` to forward-propagate `x_test` to create a set of predictions. Then, compare these predictions with `y_test`.
+    #' @note Add a note for the developer.
+    #' @param x_test `array`. A 4-D array of images.
+    #' @param y_test `array`. A 2-D array of labels.
+    #' @param network_model `list`. The trained network_model.
+    #' @param threshold `number`. A single value between `0` & `1` that is the threshold for the predicted probabilities.
+    #' @return A `data.frame` with three columns: 1) `probs`: The Probability value of each of the labels, and is the same length as `y_test`; 2) `truth`: The true labels, the exact same vector as `y_test`; 3) `class`: The class of values, defined at a given cutoff value.
+    #' @author chrimaho
+    #' @examples
+    #' # Works
+    #' get_Prediction(
+    #'     x_test=NA,
+    #'     y_test=NA
+    #' )
     
-    predic <- ForwardProp(
+    # Packages
+    require(assertthat)
+    
+    # Validations
+    assert_that(x_test %>% is.array, msg="'x_test' must be type 'array'.")
+    assert_that(y_test %>% is.array, msg="'y_test' must be type 'array'.")
+    assert_that(threshold %>% is.number, msg="'threshold' must be type 'number'.")
+    assert_that(between(threshold, 0, 1), msg="'threshold must be between '0' and '1'.")
+    assert_that(network_model %>% is.list, msg="'network_model' must be type 'list'.")
+    assert_that(network_model %>% names %>% extract(1) == "input", msg="The first layer of 'network_model' must be 'input'.")
+    assert_that(network_model %>% names %>% rev %>% extract(1) == "output", msg="The last layer of 'network_model' must be 'output'.")
+    for (name in network_model %>% names) {
+        if (!name %in% c("input","output")) {
+            assert_that(name %>% as.numeric %>% is.integer, msg="Each hidden layer in 'network_model' must be an integer value.")
+        }
+    }
+    
+    # Create prediction
+    predic <- set_ForwardProp(
         network_model=network_model, 
         data_in=x_test, 
         activation_hidden="relu", 
         activation_final="sigmoid"
     )
     
+    # Extract probabilities
     probas <- predic[["output"]][["acti"]]
     
+    # Define results
     result <- data.frame(
         probs=probas,
         truth=y_test
     )
-    result %<>% mutate(class=ifelse(probas>0.5, 1, 0))
     
+    # Add class
+    result %<>% 
+        mutate(class=ifelse(probas>threshold, 1, 0))
+    
+    # Return
     return(result)
-    
 }
 ```
 

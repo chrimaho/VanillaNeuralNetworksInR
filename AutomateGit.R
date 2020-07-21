@@ -24,6 +24,12 @@ GitSync <- function(repo=rprojroot::find_rstudio_root_file(), untracked=TRUE, st
     #' @param push logical. Do you want to run the `push` process?
     #' @return A character string for success or failure.
     
+    # Confirm required packages are loaded ----
+    require(git2r)
+    require(rprojroot)
+    require(rstudioapi)
+    require(assertthat)
+    
     # Validations ----
     assert_that(is.character(repo))
     assert_that(is.logical(untracked))
@@ -32,11 +38,6 @@ GitSync <- function(repo=rprojroot::find_rstudio_root_file(), untracked=TRUE, st
     assert_that(is.logical(pull))
     assert_that(is.logical(push))
     assert_that(dir.exists(repo), msg="'repo' must be a valid system directory.")
-    
-    # Confirm required packages are loaded ----
-    require(git2r)
-    require(rprojroot)
-    require(rstudioapi)
     
     # Confirm valid repor directory ----
     if (!file.exists(paste0(repo, "/.git/config"))) {
