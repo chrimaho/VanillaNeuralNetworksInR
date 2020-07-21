@@ -258,10 +258,27 @@ is.integer <- function(value) {
     require(DescTools)
     
     # Validations
-    assert_that(value %>% is.numeric, msg="'value' must be type 'numeric'.")
+    #assert_that(value %>% is.numeric, msg="'value' must be type 'numeric'.")
     
     # Do work
     return(IsWhole(value))
+}
+
+
+get_TimeDifference <- function(start_time, finish_time=Sys.time()) {
+    
+    assert_that(start_time %>% is.time, msg="'start_time' must be type 'time'.")
+    assert_that(finish_time %>% is.time, msg="'finish_time' must be type 'time'.")
+    
+    diff_time <- difftime(finish_time, start_time, units="auto")
+    
+    str_diff_time <- paste(
+        diff_time %>% round(2),
+        diff_time %>% attributes() %>% extract2("units")
+    )
+    
+    return(str_diff_time)
+    
 }
 ```
 
@@ -542,6 +559,7 @@ set_InstantiateNetwork <- function(input=50, hidden=c(30,20,10), output=1) {
     
     # Packages
     require(assertthat)
+    require(dplyr)
     
     # Validations
     assert_that(input %>% is.integer, msg="'input' must be type 'integer'.")
@@ -628,6 +646,7 @@ let_InitialiseXavier <- function(nodes_in, nodes_out, order=6) {
     
     # Packages
     require(assertthat)
+    require(dplyr)
     
     # Validations
     assert_that(nodes_in %>% is.integer, msg="'nodes_in' must be type 'integer'.")
@@ -663,6 +682,7 @@ let_InitialiseHe <- function(nodes_in, nodes_out, order=2) {
     
     # Packages
     require(assertthat)
+    require(dplyr)
     
     # Validations
     assert_that(nodes_in %>% is.integer, msg="'nodes_in' must be type 'integer'.")
@@ -703,6 +723,7 @@ set_InitialiseLayer <- function(network_model, layer_index, initialisation_algor
     # Packages
     require(assertthat)
     require(stringr)
+    require(dplyr)
     
     # Validations
     assert_that(network_model %>% is.list, msg="'network_model' must be type 'list'.")
@@ -722,7 +743,7 @@ set_InitialiseLayer <- function(network_model, layer_index, initialisation_algor
     }
     nodes_out <- network_model %>% extract2(layer) %>% extract2("nodz")
     
-    # Set Seed
+    # Set the seed of reproducibility
     set.seed(1234)
     
     # Initialise weight matrix
@@ -784,6 +805,7 @@ set_InitialiseModel <- function(network_model, initialisation_algorithm="xavier"
     
     # Packages
     require(assertthat)
+    require(dplyr)
     
     # Validations
     assert_that(network_model %>% is.list, msg="'network_model' must be type 'list'.")
@@ -988,6 +1010,7 @@ set_LinearForward <- function(inpt, wgts, bias) {
     
     # Packages
     require(assertthat)
+    require(dplyr)
     
     # Validations
     assert_that(inpt %>% is.matrix, msg="'inpt' must be type 'matrix'.")
@@ -1029,6 +1052,7 @@ let_ActivateSigmoid <- function(linr) {
     
     # Packages
     require(assertthat)
+    require(dplyr)
     
     # Validations
     assert_that(linr %>% is.matrix, msg="'linr' must be type 'matrix'.")
@@ -1057,6 +1081,7 @@ let_ActivateRelu <- function(linr) {
     
     # Packages
     require(assertthat)
+    require(dplyr)
     
     # Validations
     assert_that(linr %>% is.matrix, msg="'linr' must be type 'matrix'.")
@@ -1086,6 +1111,7 @@ let_ActivateSoftmax <- function(linr) {
     
     # Packages
     require(assertthat)
+    require(dplyr)
     
     # Validations
     assert_that(linr %>% is.matrix, msg="'linr' must be type 'matrix'.")
@@ -1118,6 +1144,7 @@ let_ActivateSwish <- function(linr, beta=0.1) {
     
     # Packages
     require(assertthat)
+    require(dplyr)
     
     # Validations
     assert_that(linr %>% is.matrix, msg="'linr' must be type 'matrix'.")
@@ -1154,6 +1181,7 @@ set_ForwardProp <- function(network_model, data_in, activation_hidden="relu", ac
     
     # Packages
     require(assertthat)
+    require(dplyr)
     
     # Validations
     assert_that(network_model %>% is.list, msg="'network_model' must be type 'list'.")
@@ -1191,7 +1219,7 @@ set_ForwardProp <- function(network_model, data_in, activation_hidden="relu", ac
             bias <- network_model[[layr]][["bias"]]
             
             # Calculate
-            linr <- LinearForward(inpt, wgts, bias)
+            linr <- set_LinearForward(inpt, wgts, bias)
             
             # Activate
             if (layr=="output") {
@@ -1249,12 +1277,13 @@ get_ComputeCost <- function(pred, true, epsi=1e-10) {
     
     # Packages
     require(assertthat)
+    require(dplyr)
     
     # Validations
     assert_that(pred %>% is.matrix, msg="'pred' must be type 'matrix'.")
     assert_that(true %>% is.matrix, msg="'true' must be type 'matrix'.")
     assert_that(epsi %>% is.number, msg="'epsi' must be type 'number'.")
-    assert_that(epsi > 0.0001, msg="'epsi' should be a very small epsilon value.")
+    assert_that(epsi < 0.0001, msg="'epsi' should be a very small epsilon value.")
     
     # Get number of samples
     samp <- length(true)
@@ -1299,6 +1328,7 @@ set_ApplyCost <- function(network_model, cost) {
     
     # Packages
     require(assertthat)
+    require(dplyr)
     
     # Validations
     assert_that(network_model %>% is.list, msg="'network_model' must be type 'list'.")
@@ -1324,7 +1354,7 @@ set_ApplyCost <- function(network_model, cost) {
 ## Run
 
 ```{r}
-network_model <- set_ApplyCost(network_model, ComputeCost(network_model[["output"]][["acti"]], trn_cls))
+network_model <- set_ApplyCost(network_model, get_ComputeCost(network_model[["output"]][["acti"]], trn_cls))
 ```
 
 # Backward Propogation
@@ -1351,6 +1381,7 @@ get_DifferentiateCost <- function(pred=NA, true=NA) {
     
     # Packages
     require(assertthat)
+    require(dplyr)
     
     # Validations
     assert_that(pred %>% is.matrix, msg="'pred' must be type 'matrix'.")
@@ -1384,7 +1415,7 @@ set_ApplyDifferentiateCost <- function(network_model, cost_differential) {
     
     # Validations
     assert_that(network_model %>% is.list, msg="'network_model' must be type 'list'.")
-    assert_that(cost_differential %>% is.number, msg="'cost_differential' must be type 'number'.")
+    assert_that(cost_differential %>% is.numeric, msg="'cost_differential' must be type 'numeric'.")
     assert_that(network_model %>% names %>% extract(1) == "input", msg="The first layer of 'network_model' must be 'input'.")
     assert_that(network_model %>% names %>% rev %>% extract(1) == "output", msg="The last layer of 'network_model' must be 'output'.")
     for (name in network_model %>% names) {
@@ -1436,6 +1467,7 @@ get_DifferentiateLinear <- function(back_linr_curr, acti_prev, wgts, bias) {
     
     # Packages
     require(assertthat)
+    require(dplyr)
     
     # Validations
     assert_that(back_linr_curr %>% is.matrix, msg="'back_linr_curr' must be type 'matrix'.")
@@ -1492,6 +1524,7 @@ let_BackwardActivateRelu <- function(diff_acti_curr, linr_curr) {
     
     # Packages
     require(assertthat)
+    require(dplyr)
     
     # Validations
     assert_that(diff_acti_curr %>% is.matrix, msg="'diff_acti_curr' must be type 'matrix'.")
@@ -1523,6 +1556,7 @@ let_BackwardActivateSigmoid <- function(diff_acti_curr, linr_curr) {
     
     # Packages
     require(assertthat)
+    require(dplyr)
     
     # Validations
     assert_that(diff_acti_curr %>% is.matrix, msg="'diff_acti_curr' must be type 'matrix'.")
@@ -1557,6 +1591,7 @@ set_BackwardProp <- function(network_model) {
     
     # Packages
     require(assertthat)
+    require(dplyr)
     
     # Validations
     assert_that(network_model %>% is.list, msg="'network_model' must be type 'list'.")
@@ -1585,7 +1620,7 @@ set_BackwardProp <- function(network_model) {
         wgts_curr <- network_model[[layr_curr]][["wgts"]]
         bias_curr <- network_model[[layr_curr]][["bias"]]
         acti_prev <- network_model[[layr_prev]][["acti"]]
-        acti_func_back <- network_model[[layr_curr]][["acti_func"]] %>% str_to_title %>% paste0("let_Backward", .)
+        acti_func_back <- network_model[[layr_curr]][["acti_func"]] %>% str_to_title %>% paste0("let_BackwardActivate", .)
         diff_acti_curr <- network_model[[layr_curr]][["back_acti"]]
         diff_linr_curr <- matrix()
         diff_acti_prev <- matrix()
@@ -1596,7 +1631,7 @@ set_BackwardProp <- function(network_model) {
         diff_linr_curr <- get(acti_func_back)(diff_acti_curr, linr_curr)
         
         # Differentiate linear
-        list_linr <- DifferentiateLinear(
+        list_linr <- get_DifferentiateLinear(
             back_linr_curr=diff_linr_curr,
             acti_prev=acti_prev,
             wgts=wgts_curr,
@@ -1621,7 +1656,9 @@ set_BackwardProp <- function(network_model) {
 ### Run
 
 ```{r}
+tic()
 network_model <- set_BackwardProp(network_model)
+toc()
 ```
 
 # Update Model Parameters
@@ -1644,6 +1681,7 @@ set_UpdateModel <- function(network_model, learning_rate=0.001) {
     
     # Packages
     require(assertthat)
+    require(dplyr)
     
     # Validations
     assert_that(network_model %>% is.list, msg="'network_model' must be type 'list'.")
@@ -1695,7 +1733,7 @@ let_TrainModel <- function(x_train, y_train,
                            initialisation_algorithm="xavier", initialisation_order="layers",
                            epochs=500, learning_rate=0.001,
                            activation_hidden="relu", activation_final="sigmoid",
-                           verbosity=NA
+                           verbosity=NA, print_learning_curve=TRUE
                            ) {
     #' @title Train network model
     #' @description Parse in the relevant parameters, and then instantiate, initialise, forward propagate, assess, differentiate, backward propagate and update model. Then repeat this process `epoch` number of times.
@@ -1712,6 +1750,7 @@ let_TrainModel <- function(x_train, y_train,
     #' @param activation_hidden `string`.
     #' @param activation_final `string`.
     #' @param verbosity `integer` or `NA`.
+    #' @param print_learning_curve `logical`.
     #' @return A list containing the `results`, and the final trained `network_model`.
     #' @author chrimaho
     #' @examples
@@ -1723,10 +1762,12 @@ let_TrainModel <- function(x_train, y_train,
     
     # Packages
     require(assertthat)
+    require(dplyr)
+    require(magrittr)
     
     # Validations
-    assert_that(x_train %>% is.NA, msg="'x_train' must be type 'array'.")
-    assert_that(y_train %>% is.NA, msg="'y_train' must be type 'array'.")
+    assert_that(x_train %>% is.array, msg="'x_train' must be type 'array'.")
+    assert_that(y_train %>% is.array, msg="'y_train' must be type 'array'.")
     assert_that(input_nodes %>% is.integer, msg="'input_nodes' must be type 'integer'.")
     assert_that(hidden_nodes %>% is.vector, msg="'hidden_nodes' must be type 'vector'.")
     assert_that(hidden_nodes %>% is.integer %>% all, msg="All elements of 'hidden_nodes' must be integers.")
@@ -1743,6 +1784,7 @@ let_TrainModel <- function(x_train, y_train,
     assert_that(activation_hidden %in% c("sigmoid","relu","softmax","swish"), msg="'activation_hidden' must be one of: 'sigmoid', 'relu', 'softmax', or 'swish'.")
     assert_that(activation_final %in% c("sigmoid","relu","softmax","swish"), msg="'activation_final' must be one of: 'sigmoid', 'relu', 'softmax', or 'swish'.")
     assert_that(or(is.integer(verbosity), is.na(verbosity)), msg="'verbosity' must be type 'integer' or value 'NA'.")
+    assert_that(print_learning_curve %>% is.logical, msg="'print_learning_curve' must be type 'logical'.")
     
     # Begin the timer
     time_begin <- Sys.time()
@@ -1797,7 +1839,10 @@ let_TrainModel <- function(x_train, y_train,
         # Print update
         if (!is.na(verbosity)) {
             if (epoch %% verbosity == 0) {
-                print("With learning rate {}, at epoch {}, the cost is: {}\n  Elapsed {}" %>% str_Format(learning_rate, epoch, cost, Sys.time()-time_begin))
+                if (epoch == verbosity) {
+                    cat("Learning rate: {}\n" %>% str_Format(learning_rate))
+                }
+                cat("Epoch {}, Cost: {}, Time: {}\n" %>% str_Format(epoch, cost, get_TimeDifference(time_begin)))
             }
         }
         
@@ -1807,7 +1852,7 @@ let_TrainModel <- function(x_train, y_train,
         # Differentiate cost
         network_model <- set_ApplyDifferentiateCost(
             network_model=network_model, 
-            DifferentiateCost(network_model[["output"]][["acti"]], y_train)
+            get_DifferentiateCost(network_model[["output"]][["acti"]], y_train)
         )
         
         # Backprop
@@ -1821,12 +1866,52 @@ let_TrainModel <- function(x_train, y_train,
         
     }
     
+    # Re-apply back to the output list
     output[["network_model"]] <- network_model
     
+    # Print the results
+    if (print_learning_curve == TRUE) {
+        
+        print("yes")
+        print(output[["results"]][["cost"]] %>% 
+            data.frame(cost=.) %>% 
+            rowid_to_column("epoch") %>% 
+            ggplot() +
+            geom_line(aes(epoch,cost)) +
+            coord_cartesian(ylim=c(0,1)) +
+            labs(
+                title=paste0("Learning Curve for Neural Network"),
+                subtitle=paste0(
+                    "Inp: '", input_nodes, "',  Hid: '", paste0(hidden_nodes, collapse=","), "',  Out: '", output_nodes, "'\n",
+                    "Init Alg: '", initialisation_algorithm, "',  Init Ord: '", initialisation_order, "'\n",
+                    "Acti Hid: '", activation_hidden, "',  Acti Out: '", activation_final, "'\n",
+                    "Epochs: '", epochs, "',  Lrn Rate: '", learning_rate, "'\n"
+                ),
+                x="Epoch",
+                y="Cost"
+            )
+        )
+        
+    }
+    
+    # Return
     return(output)
 }
-
 ```
+
+## Quick Test
+
+```{r, fig.width=15, fig.height=8}
+training_output <- let_TrainModel(
+    x_train=trn_img, y_train=trn_cls,
+    input_nodes=dim(trn_img)[2], hidden_nodes=c(100,75,50,30,20), output_nodes=1,
+    initialisation_algorithm="he", initialisation_order=2,
+    epochs=50, learning_rate=0.001,
+    activation_hidden="relu", activation_final="sigmoid",
+    verbosity=10, print_learning_curve=TRUE
+)
+```
+
 
 ## Run `Xavier`
 
@@ -1837,7 +1922,7 @@ training_output <- let_TrainModel(
     initialisation_algorithm="xavier", initialisation_order="layers",
     epochs=500, learning_rate=0.001,
     activation_hidden="relu", activation_final="sigmoid",
-    verbosity=50
+    verbosity=50, print_learning_curve=TRUE
 )
 
 network_model <- training_output[["network_model"]]
