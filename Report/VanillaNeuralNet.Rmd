@@ -82,11 +82,42 @@ Therefore, let's see how to architect and construct a Vanilla Neural Network in 
 
 ## What It's Not {#whatitsnot}
 
-**Explain what it's not**
+This article does not cover the _latest_ and _greatest_ Deep Learning architectures (like [Convolution](https://www.tensorflow.org/tutorials/images/cnn) or [Recursion](https://www.tensorflow.org/guide/keras/rnn)). As such the final performance may not be as good as it _could_ be, if these architectures were used.
 
-# Layout {#layout}
+This article does not teach readers about the theoretical mathematical concepts behind _how_ Neural Networks operate. There are plenty of other lectures which teach this information (such as [The Math Behind Neural Networks](https://www.youtube.com/watch?v=RiqWATOoos8)). In fact, this article assumes a lot of knowledge from the Reader about programming, about calculus, and about the basics behind what a Neural Network conceptually is.
+
+This article does not cover _why_ Neural Networks work the way they do, and the conceptual understanding behind a Feed-Forward architecture. There are plenty of other blogs (eg. [A Beginner Intro to Neural Networks](https://medium.com/@purnasaigudikandula/a-beginner-intro-to-neural-networks-543267bda3c8)) and videos (eg. [Neural Networks series](https://www.youtube.com/playlist?list=PLZHQObOWTQDNU6R1_67000Dx_ZCJB-3pi)) which cover such information.
+
+This article does _not_ point the reader to other packages and applications which may already have this information set up and working. Packages like [`tensorflow`](https://www.rdocumentation.org/packages/tensorflow) and [`nnet`](https://www.rdocumentation.org/packages/nnet) already have this covered.
+
+What this article _actually_ is, is a functional walk-through, how-to piece, for creating a Vanilla Neural Network (a Feed-Forward Network), from scratch, step-by-step, in the `R` programming language. It contains lots of code, and lots of 
+
+# Semantics {#semantics}
+
+## Layout {#layout}
 
 **Discuss how this notebook is set up**
+
+## Syntax {#syntax}
+
+For the most part, the syntax in this article is kept to the [`dplyr`](https://www.rdocumentation.org/packages/dplyr) 'pipe' method (which uses the `%>%` symbol). However, in certain sections the R [`base`](https://www.rdocumentation.org/packages/base) syntax is used (for example, in function declaration lines).
+
+Throughout the article, many custom functions are written. Each of these are prefixed with the words `get`, `let` and `set`. The definitions of each are given below.
+
+* `get_*()`:
+
+    * It will `get` certain attributes of meta-data from the objects which are parsed to this function.
+    * Or will use the information parsed to this function to derive and `get` other values or parameters.
+
+* `set_*()`:
+
+    * It will `set` (or 'update') the objects which are parsed to this function.
+    * Is usually used for updating the network during forward and backward propagation processes.
+
+* `let_*()`:
+
+    * Similar to `get`, in that it takes other values parsed to this function to derive an outcome, however it will `let` this value be utilised by another object or function.
+    * Used mainly for the initialisation and activation functions.
 
 # Set Up {#setup}
 
@@ -113,15 +144,15 @@ library(docstring)   #<-- Makes viewing the documentation a lot easier
 ```{r Set Defaults, eval=TRUE, echo=FALSE}
 # Set Default themes
 theme_set(theme_bw())
-theme_update(plot.title = element_text(hjust=0.5)
-            ,plot.subtitle = element_text(hjust=0.5)
-            )
+theme_update(
+    plot.title = element_text(hjust=0.5),
+    plot.subtitle = element_text(hjust=0.5)
+)
 
 # Set Default rounding length
 options(digits = 4)
 options(scipen = 999)
 ```
-
 
 ```{r Load Custom Functions, eval=TRUE, echo=FALSE}
 str_Format <- function(string, ...) {
@@ -288,74 +319,7 @@ get_TimeDifference <- function(start_time, finish_time=Sys.time()) {
     return(str_diff_time)
     
 }
-```
 
-
-## Get Data {#getdata}
-
-The dataset to be used is the [CIFAR-10](https://www.cs.toronto.edu/~kriz/cifar.html) dataset. It's chosen for a number of reasons, including:
-
-1. The data is on images, which is ideal for Deep Learning purposes;
-1. There are a decent number of images included (60,000 images in total);
-1. All images are the same the same size (32x32 pixels);
-1. The images have been categorised in to 10 different classes; and
-1. It's easily accessible through the `TensorFlow` package.
-
-The following code chunk has the following process steps:
-
-1. Get the data
-    
-    * In order to import the date, it is accessed through the `keras` element, which contains the suite of `datasets`, including the `cifar10` part.
-    * The `load_data()` function retrieves the data from the online GitHub repository.
-    
-1. Extract the second element
-
-    * The `load_package()` here returns two different objects:
-        
-        1. The train dataset (containing 50,000 images);
-        1. The Test dataset (containing 10,000 images).
-        
-    * The second element is extracted (by using the `extract2()` function) because only 10,000 images are needed for these purposes.
-    * This article is to show the _process_ of creating Vanilla Neural Networks; if more data is needed at a later stage, it can easily be accessed here.
-
-1. Name the parts
-
-    * The data as downloaded contains two further elements:
-    
-        1. The images themselves (in the form of a 4-Dimensional array);
-        1. The image labels (in the form of a 2-Dimensional, single column array).
-    
-    * This data does not have any names, so therefore the names are set by using the `set_names()` function.
-
-```{r Get Data, eval=TRUE, echo=TRUE, messages=FALSE, errors=FALSE}
-# Steps:
-# 1. Get data from TensorFlow
-# 2. Extract the second element (the test data)
-# 3. Re-name the objects
-
-# Run process
-cifa <- tf$keras$datasets$cifar10$load_data() %>% 
-    extract2(2) %>% 
-    set_names(c("images","classes"))
-```
-
-```{r Define Class List, eval=TRUE, echo=TRUE}
-# Source: https://github.com/EN10/CIFAR#classes
-ClassList <- list(
-    "0"="airplane",
-    "1"="automobile",
-    "2"="bird",
-    "3"="cat",
-    "4"="deer",
-    "5"="dog",
-    "6"="frog",
-    "7"="horse",
-    "8"="ship",
-    "9"="truck"
-)
-```
-
-```{r Check Data, eval=TRUE, echo=FALSE, message=FALSE, warning=FALSE}
 get_ObjectAttributes <- function(object, name=deparse(substitute(object))) {
     #' @title Get Object Attributes
     #' @description Extract and print the key attributes of an object, including `name`, `size`, `class`, `type`, `mode`, `dims`.
@@ -412,9 +376,86 @@ get_ObjectAttributes <- function(object, name=deparse(substitute(object))) {
     # Return
     return(output %>% paste0("\n"))
 }
+```
 
+
+## Get Data {#getdata}
+
+The dataset to be used is the [CIFAR-10](https://www.cs.toronto.edu/~kriz/cifar.html) dataset. It's chosen for a number of reasons, including:
+
+1. The data is on images, which is ideal for Deep Learning purposes;
+1. There are a decent number of images included (60,000 images in total);
+1. All images are the same the same size (32x32 pixels);
+1. The images have been categorised in to 10 different classes; and
+1. It's easily accessible through the `TensorFlow` package.
+
+The following code chunk has the following process steps:
+
+1. Get the data
+    
+    * In order to import the date, it is accessed through the `keras` element, which contains the suite of `datasets`, including the `cifar10` part.
+    * The `load_data()` function retrieves the data from the online GitHub repository.
+    
+1. Extract the second element
+
+    * The `load_package()` here returns two different objects:
+        
+        1. The train dataset (containing 50,000 images);
+        1. The Test dataset (containing 10,000 images).
+        
+    * The second element is extracted (by using the `extract2()` function) because only 10,000 images are needed for these purposes.
+    * This article is to show the _process_ of creating Vanilla Neural Networks; if more data is needed at a later stage, it can easily be accessed here.
+
+1. Name the parts
+
+    * The data as downloaded contains two further elements:
+    
+        1. The images themselves (in the form of a 4-Dimensional array);
+        1. The image labels (in the form of a 2-Dimensional, single column array).
+    
+    * This data does not have any names, so therefore the names are set by using the `set_names()` function.
+
+```{r Get Data, eval=TRUE, echo=TRUE, messages=FALSE, errors=FALSE}
+# Steps:
+# 1. Get data from TensorFlow
+# 2. Extract the second element (the test data)
+# 3. Re-name the objects
+
+# Run process
+cifar <- tf$keras$datasets$cifar10$load_data() %>% 
+    extract2(2) %>% 
+    set_names(c("images","classes"))
+```
+
+One of the challenges behind accessing this data from the `tensorflow` package is that the classes are only numeric values (`0` to `9`) for each type of image. The definitions for these images can be found on GitHub ([EN10/CIFAR](https://github.com/EN10/CIFAR#classes)). These classes are defined in the following code chunk.
+
+```{r Define Class List, eval=TRUE, echo=TRUE}
+ClassList <- list(
+    "0"="airplane",
+    "1"="automobile",
+    "2"="bird",
+    "3"="cat",
+    "4"="deer",
+    "5"="dog",
+    "6"="frog",
+    "7"="horse",
+    "8"="ship",
+    "9"="truck"
+)
+```
+
+It is important to check the data, to ensure that it has been generated correctly, and all the information looks okay. For this, a custom-function is written (`get_ObjectAttributes`), the source code for which can be found [here]().
+
+```{r Check Data, eval=TRUE, echo=TRUE, message=FALSE, warning=FALSE}
 # Print result
-get_ObjectAttributes(cifa$images) %>% cat()
+cifar %>% 
+    extract("images") %>% 
+    get_ObjectAttributes() %>% 
+    cat()
+
+cifar %>% 
+    extract("classes") %>% 
+    table
 ```
 
 For this, the custom function `str_Format()` is used. The source code for this function can be found [here]().
@@ -510,27 +551,27 @@ plt_PlotImage <- function(images, classes, index=1) {
 
 ```{r View Images, eval=TRUE, echo=TRUE}
 for (i in 1:20) {
-    plt_PlotImage(cifa$images, cifa$classes, i)
+    plt_PlotImage(cifar$images, cifar$classes, i)
 }
 ```
 
 ## Fix data {#fixdata}
 
 ```{r}
-cifa %>% extract2("classes") %>% head(100) %>% as.vector()
-cifa$classes <- ifelse(cifa$classes==1,1,0)
-cifa %>% extract2("classes") %>% head(100) %>% as.vector()
+cifar %>% extract2("classes") %>% head(100) %>% as.vector()
+cifar$classes <- ifelse(cifar$classes==1,1,0)
+cifar %>% extract2("classes") %>% head(100) %>% as.vector()
 ```
 
 ## Split Data {#splitdata}
 
 ```{r Split Data, eval=TRUE, echo=TRUE}
 set.seed(1234)
-partition <- createDataPartition(cifa$classes, p=0.7, list=FALSE)
-trn_img <- cifa$images[partition,,,]
-tst_img <- cifa$images[-partition,,,]
-trn_cls <- cifa$classes[partition]
-tst_cls <- cifa$classes[-partition]
+partition <- createDataPartition(cifar$classes, p=0.7, list=FALSE)
+trn_img <- cifar$images[partition,,,]
+tst_img <- cifar$images[-partition,,,]
+trn_cls <- cifar$classes[partition]
+tst_cls <- cifar$classes[-partition]
 rm(partition)
 ```
 
@@ -2088,14 +2129,31 @@ let_TrainModel <- function(x_train, y_train,
     # Print the results
     if (print_learning_curve == TRUE) {
         
-        output[["results"]][["cost"]] %>% 
-            plt_PlotLearningCurve(
-                input_nodes=input_nodes, hidden_nodes=hidden_nodes, output_nodes=output_nodes,
-                initialisation_algorithm=initialisation_algorithm, initialisation_order=initialisation_order,
-                activation_hidden=activation_hidden, activation_final=activation_final,
-                epochs=epochs, learning_rate=learning_rate
-            ) %>% 
-            print()
+        tryCatch(
+            expr={
+                output[["results"]][["cost"]] %>% 
+                    plt_PlotLearningCurve(
+                        input_nodes=input_nodes, hidden_nodes=hidden_nodes, output_nodes=output_nodes,
+                        initialisation_algorithm=initialisation_algorithm, initialisation_order=initialisation_order,
+                        activation_hidden=activation_hidden, activation_final=activation_final,
+                        epochs=epochs, learning_rate=learning_rate
+                    ) %>% 
+                    print()
+            },
+            warning=function(message){
+                writeLines("A Warning occurred:")
+                writeLines(message)
+                return(invisible(NA))
+            },
+            error=function(message){
+                writeLines("An Error occurred:")
+                writeLines(message)
+                return(invisible(NA))
+            },
+            finally={
+                #Do nothing...
+            }
+        )
         
     }
     
@@ -2115,6 +2173,30 @@ training_output <- let_TrainModel(
     batches=56, epochs=10, learning_rate=0.01,
     verbosity=1, print_learning_curve=TRUE
 )
+
+get_Prediction(tst_img, tst_cls, training_output[["network_model"]], 0.1) %>% 
+    mutate_at(c("truth","class"), funs(ifelse(.==1,"car","not"))) %>% 
+    select(class,truth) %>% 
+    table %>% 
+    caret::confusionMatrix() %>% 
+    (function(x){
+        print(x)
+        return(x)
+    }) %>% 
+    plt_ConfusionMatrix()
+
+get_Prediction(tst_img, tst_cls, training_output[["network_model"]]) %>% 
+    ggplot() +
+    plotROC::geom_roc(aes(m=probs, d=truth), n.cuts=0) +
+    plotROC::style_roc(theme=theme_grey) +
+    theme(
+        plot.title = element_text(hjust=0.5),
+        plot.subtitle = element_text(hjust=0.5)
+    ) + 
+    labs(
+        title="ROC Curve"
+    )
+
 ```
 
 ## Run `Xavier`
@@ -2124,10 +2206,33 @@ training_output <- let_TrainModel(
     x_train=trn_img, y_train=trn_cls,
     input_nodes=dim(trn_img)[2], hidden_nodes=c(100,75,50,30,20), output_nodes=1,
     initialisation_algorithm="xavier", initialisation_order="layers",
-    batches=10, epochs=500, learning_rate=0.001,
+    batches=56, epochs=500, learning_rate=0.001,
     activation_hidden="relu", activation_final="sigmoid",
     verbosity=50, print_learning_curve=TRUE
 )
+
+get_Prediction(tst_img, tst_cls, training_output[["network_model"]], 0.1) %>% 
+    mutate_at(c("truth","class"), funs(ifelse(.==1,"car","not"))) %>% 
+    select(class,truth) %>% 
+    table %>% 
+    caret::confusionMatrix() %>% 
+    (function(x){
+        print(x)
+        return(x)
+    }) %>% 
+    plt_ConfusionMatrix()
+
+get_Prediction(tst_img, tst_cls, training_output[["network_model"]]) %>% 
+    ggplot() +
+    plotROC::geom_roc(aes(m=probs, d=truth), n.cuts=0) +
+    plotROC::style_roc(theme=theme_grey) +
+    theme(
+        plot.title = element_text(hjust=0.5),
+        plot.subtitle = element_text(hjust=0.5)
+    ) + 
+    labs(
+        title="ROC Curve"
+    )
 ```
 
 ## Run `He`
@@ -2139,8 +2244,31 @@ training_output <- let_TrainModel(
     initialisation_algorithm="he", initialisation_order=2,
     batches=56, epochs=500, learning_rate=0.01,
     activation_hidden="relu", activation_final="sigmoid",
-    verbosity=50
+    verbosity=50, print_learning_curve=TRUE
 )
+
+get_Prediction(tst_img, tst_cls, training_output[["network_model"]], 0.1) %>% 
+    mutate_at(c("truth","class"), funs(ifelse(.==1,"car","not"))) %>% 
+    select(class,truth) %>% 
+    table %>% 
+    caret::confusionMatrix() %>% 
+    (function(x){
+        print(x)
+        return(x)
+    }) %>% 
+    plt_ConfusionMatrix()
+
+get_Prediction(tst_img, tst_cls, training_output[["network_model"]]) %>% 
+    ggplot() +
+    plotROC::geom_roc(aes(m=probs, d=truth), n.cuts=0) +
+    plotROC::style_roc(theme=theme_grey) +
+    theme(
+        plot.title = element_text(hjust=0.5),
+        plot.subtitle = element_text(hjust=0.5)
+    ) + 
+    labs(
+        title="ROC Curve"
+    )
 ```
 
 
@@ -2148,14 +2276,14 @@ training_output <- let_TrainModel(
 $$ \begin{bmatrix} `r matrix(1:12, ncol=3)` \end{bmatrix} $$
 
 ```{r, fig.width=15, fig.height=8}
-training_output <- let_TrainModel(
-    x_train=trn_img, y_train=trn_cls,
-    input_nodes=dim(trn_img)[2], hidden_nodes=c(1000,500,100,50,10), output_nodes=1,
-    initialisation_algorithm="he", initialisation_order=2,
-    activation_hidden="relu", activation_final="sigmoid",
-    batches=10, epochs=1000, learning_rate=0.001,
-    verbosity=100
-)
+# training_output <- let_TrainModel(
+#     x_train=trn_img, y_train=trn_cls,
+#     input_nodes=dim(trn_img)[2], hidden_nodes=c(1000,500,100,50,10), output_nodes=1,
+#     initialisation_algorithm="he", initialisation_order=2,
+#     activation_hidden="relu", activation_final="sigmoid",
+#     batches=56, epochs=1000, learning_rate=0.001,
+#     verbosity=100
+# )
 ```
 
 
@@ -2183,6 +2311,8 @@ get_Prediction <- function(x_test, y_test, network_model, threshold=0.5) {
     
     # Packages
     require(assertthat)
+    require(dplyr)
+    require(magrittr)
     
     # Validations
     assert_that(x_test %>% is.array, msg="'x_test' must be type 'array'.")
@@ -2276,7 +2406,6 @@ plt_ConfusionMatrix <- function(confusion_matrix) {
 ```
 
 ```{r, fig.width=6, fig.height=5}
-
 # library(ROCR)
 # pred <- get_Prediction(tst_img, tst_cls, training_output[["network_model"]])
 # pred <- prediction(pred$probs, pred$truth)
@@ -2288,6 +2417,20 @@ plt_ConfusionMatrix <- function(confusion_matrix) {
 #     plot()
 
 library(plotROC)
+```
+
+```{r, fig.width=6, fig.height=5}
+get_Prediction(tst_img, tst_cls, training_output[["network_model"]], 0.1) %>% 
+    mutate_at(c("truth","class"), funs(ifelse(.==1,"car","not"))) %>% 
+    select(class,truth) %>% 
+    table %>% 
+    caret::confusionMatrix() %>% 
+    (function(x){
+        print(x)
+        return(x)
+    }) %>% 
+    plt_ConfusionMatrix()
+
 get_Prediction(tst_img, tst_cls, training_output[["network_model"]]) %>% 
     ggplot() +
     plotROC::geom_roc(aes(m=probs, d=truth), n.cuts=0) +
@@ -2299,13 +2442,4 @@ get_Prediction(tst_img, tst_cls, training_output[["network_model"]]) %>%
     labs(
         title="ROC Curve"
     )
-```
-
-```{r, fig.width=6, fig.height=5}
-get_Prediction(tst_img, tst_cls, training_output[["network_model"]], 0.1) %>% 
-    mutate_at(c("truth","class"), funs(ifelse(.==1,"car","not"))) %>% 
-    select(class,truth) %>% 
-    table %>% 
-    caret::confusionMatrix() %>% 
-    plt_ConfusionMatrix()
 ```
