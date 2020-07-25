@@ -96,7 +96,18 @@ What this article _actually_ is, is a functional walk-through, how-to piece, for
 
 ## Layout {#layout}
 
-**Discuss how this notebook is set up**
+This article is laid our in such a way to describe how a Neural Network is built from the ground-up. It will walk through the steps to:
+
+1. Access and check the data
+1. Instantiate and Initialise the network
+1. Run forward propagation
+1. Compute the cost
+1. Run backward propagation
+1. Update the model
+1. Set up a training method to loop through every thing
+1. Predict and assess the performance
+
+In the interest of brevity, the functions defined here will not include all the commentary and validations that should be included in a function. They will only include basic steps and prompts. However, the source code for this article (located [here](https://github.com/chrimaho/VanillaNeuralNetworksInR/blob/master/Functions/functions.R)) does contain all the appropriate function docstrings and assertions.
 
 ## Syntax {#syntax}
 
@@ -157,290 +168,6 @@ options(scipen = 999)
 source("../Functions/functions.R")
 ```
 
-```{r Load Custom Functions, eval=TRUE, echo=FALSE}
-str_Format <- function(string, ...) {
-    #' @title String Formatter
-    #' @description Take an input string, and substitute in-string variables.
-    #' @note This is similar to the Python `string.foramt()` method.
-    #' @param string `string`. The string to be re-formatted. Note, each of the named arguments must be surrounded in curly brackets.
-    #' @param ... `variables`. A list of variables. Note, these can either be named or not; but they must all be named, or all be blank, because it cannot handle a mixture. Each of these arguments must align to the variables in curly brackets from the `string` argument. These will be combined in to a list.
-    #' @return A formatted string
-    #' @seealso https://stackoverflow.com/questions/44763056/is-there-an-r-equivalent-of-pythons-string-format-function#answer-44763659
-    #' @author chrimaho
-    #' @examples 
-    #' str_Format(
-    #'     "Sammy the {animal} {verb} a {noun}.", 
-    #'     animal="shark", 
-    #'     verb="made", 
-    #'     noun="house"
-    #' )
-    #' 
-    #' str_Format(
-    #'     "Sammy the {} {} a {}.", 
-    #'     "shark", 
-    #'     "made", 
-    #'     "house"
-    #' )
-    #' 
-    #' "Sammy the {animal} {verb} a {noun}" %>% 
-    #'     str_Format(animal="shark", verb="made", noun="house")
-    #' 
-    #' "Sammy the {} {} a {}" %>%
-    #'     str_Format("shark", "made", "house")
-    
-    # Packages
-    require(stringr)
-    require(magrittr)
-    require(dplyr)
-    require(assertthat)
-    require(dynutils)
-    require(english)
-    
-    # Validations
-    assert_that(string %>% is.string, msg="'string' must be type 'string'.")
-    
-    # Set Up
-    num_variables <- str_count(string, coll("{}"))
-    vars <- list(...)
-    
-    # Handle if vars are not named
-    if (num_variables>0) {
-        
-        # Add number in between each curly bracket
-        for (i in 1:num_variables) {
-            string %<>% str_replace(coll("{}"), paste0("{",as.english(i),"}"))
-        }
-        
-        # Name the vars as numbers
-        vars %<>% set_names(as.english(1:num_variables))
-        
-    }
-    
-    # Make environment
-    envir <- as.environment(vars)
-    parent.env(envir) <- .GlobalEnv
-    
-    # Perform substitution
-    string %<>% str_replace_all("\\{", "${")
-    str_return <- str_interp(string=string, env=envir)
-    
-    # Return
-    return(str_return)
-    
-}
-
-
-get_Modulus <- function(value) {
-    #' @title Find minimum modulus value
-    #' @description Add function description.
-    #' @note Add a note for the developer.
-    #' @param value `numeric`. The value to be modularised.
-    #' @return The minimum modulus number of `value`.
-    #' @seealso 
-    #' @author chrimaho
-    #' @examples
-    #' # Works
-    #' get_MaximumMudulus(
-    #'     value=NA,
-    #'     NA=NA
-    #' )
-    
-    # Packages
-    require(assertthat)
-    require(dplyr)
-    require(magrittr)
-    
-    # Validations
-    assert_that(value %>% is.numeric, msg="'value' must be type 'numeric'.")
-    
-    # Do work
-    for (num in 1:value) {
-        if (num == 1) {
-            mod_value <- num
-        } else if (value %% num == 0) {
-            mod_value %<>% c(num)
-        }
-    }
-    
-    # Return
-    return(mod_value)
-}
-
-
-get_CountOfElementsWithCondition <- function(vector_of_elements, condition=NULL) {
-    #' @title Get Count of Elements with Condition
-    #' @description Get the count of the number of elements in a list that meet a specified condition.
-    #' @note The `condition` must be an anonymous function. Also note that the `warnings` are suppressed when running the `condition` function.
-    #' @param vector_of_elements `vector`. The list of elements to check.
-    #' @param condition `function`. The condition for checking. Must be an anonymous function. Defaults to `NULL`.
-    #' @return An integer.
-    #' @seealso https://thispointer.com/python-count-elements-in-a-list-that-satisfy-certain-conditions/#crayon-5ea195c434f39109077492-1
-    #' @author chrimaho
-    #' @examples
-    #' # Returns condition
-    #' get_CountOfElementsWithCondition(
-    #'     c("i", "1", "2", "3", "o"),
-    #'     function(x) {IsWhole(as.numeric(x))}
-    #' )
-    #' 
-    #' # Returns length
-    #' get_CountOfElementsWithCondition(
-    #'     c("i", "1", "2", "3", "o")
-    #' )
-    #' 
-    #' # Returns error
-    #' get_CountOfElementsWithCondition(
-    #'     c("i", "1", "2", "3", "o"),
-    #'     2
-    #' )
-    
-    # Import packages
-    require(assertthat)
-    require(dplyr)
-    
-    # Validations
-    assert_that(vector_of_elements %>% is_vector, msg="'vector_of_elements' must be type 'vector'.")
-    assert_that(or(condition %>% is_function, condition %>% is.null), msg="'condition' must either be a function or the value 'NULL'.")
-    
-    # Do work
-    if (!is.null(condition)) {
-        count <- sum(suppressWarnings(condition(vector_of_elements)), na.rm=TRUE)
-    } else {
-        count <- length(vector_of_elements)
-    }
-    
-    # Return
-    return(count)
-}
-
-
-is.integer <- function(value) {
-    #' @title Check if is integer.
-    #' @description This is a wrapper around the `DescTools::IsWhole()` function.
-    #' @note The `DescTools::IsWhole()` is the only package that genuinely works on integer values. Other functions such as `base::is.integer()` and `purrr::is_integer()` do not work properly...
-    #' @param value `numeric`. The value to be checked.
-    #' @return A logical value confirming if `value` is an integer or not.
-    #' @author chrimaho
-    #' @examples
-    #' # Works
-    #' is.integer(
-    #'     value=1
-    #' )
-    #' 
-    #' # Fails
-    #' is.integer(
-    #'     value=0.5
-    #' )
-    
-    # Packages
-    require(dplyr)
-    require(DescTools)
-    
-    # Validations
-    #assert_that(value %>% is.numeric, msg="'value' must be type 'numeric'.")
-    
-    # Do work
-    return(IsWhole(value))
-}
-
-
-get_TimeDifference <- function(start_time, finish_time=Sys.time()) {
-    
-    assert_that(start_time %>% is.time, msg="'start_time' must be type 'time'.")
-    assert_that(finish_time %>% is.time, msg="'finish_time' must be type 'time'.")
-    
-    diff_time <- difftime(finish_time, start_time, units="auto")
-    
-    str_diff_time <- paste(
-        diff_time %>% round(2),
-        diff_time %>% attributes() %>% extract2("units")
-    )
-    
-    return(str_diff_time)
-    
-}
-
-get_ObjectAttributes <- function(object, name=deparse(substitute(object)), print_freq=FALSE) {
-    #' @title Get Object Attributes
-    #' @description Extract and print the key attributes of an object, including `name`, `size`, `class`, `type`, `mode`, `dims`.
-    #' @note In order to do pretty-print, parse the result of this function in to the `cat()` function.
-    #' @param object `any`. The object to be checked.
-    #' @param name `string`. The name of the object. Defaults to the name of `object` in the parent environment.
-    #' @return A string that contains all the relevant information.
-    #' @author chrimaho
-    #' @examples 
-    #' vec <- vector(1:20)
-    #' mat <- matrix(1:20, ncol=4)
-    #' 
-    #' get_ObjectAttributes(
-    #'     object=vec
-    #' )
-    #' 
-    #' get_ObjectAttributes(
-    #'     object=mat,
-    #'     name="My Matrix"
-    #' )
-    
-    # Import packages
-    require(assertthat)
-    require(magrittr)
-    require(dplyr)
-    
-    # Validations
-    assert_that(name %>% is.string, msg="'name' must be type 'string'.")
-    assert_that(print_freq %>% is.flag, msg="'print_freq' must be type 'flag'.")
-    
-    # Get attributes
-    if (missing(name)) {name <- deparse(substitute(object))}
-    name %<>% paste("Name :", .)
-    size  <- object %>% object.size() %>% format(units="auto") %>% paste("Size :", .)
-    class <- object %>% class()       %>% paste(collapse=",") %>%  paste("Clas :", .)
-    type  <- object %>% typeof()      %>% paste("Type :", .)
-    mode  <- object %>% mode()        %>% paste("Mode :", .)
-    dims  <- object %>% 
-        { if(class(.) %in% c("matrix","data.frame","list","array")) {
-            dim(.) %>% paste(collapse="x")
-          } else {
-            length(.)
-          } 
-        } %>%  
-        paste("Dims :", .)
-    if (print_freq) {
-        assert_that(object %>% dim %>% length <= 2, msg="If 'print_freq' is TRUE, then the dimensions of 'object' must be less than or equal to '2'.")
-        freq <- object %>% 
-            table(dnn="label") %>% 
-            as.data.frame() %>% 
-            as.matrix(rownames.force=TRUE) %>% 
-            noquote %>% 
-            capture.output %>% 
-            paste0(collapse="\n   ") %>% 
-            paste("Freq :\n  ", .)
-    } else {
-        freq <- NULL
-    }
-    
-    # Combine attributes
-    output <- paste(
-        name,
-        size,
-        class,
-        type,
-        mode,
-        dims,
-        sep="\n - "
-    )
-    
-    # Add Freq
-    if (print_freq) {
-        output %<>% paste(freq, sep="\n - ")
-    }
-    
-    # Return
-    return(output %>% paste0("\n"))
-}
-```
-
-
 # Get Data {#getdata}
 
 ## Download Data {#downloaddata}
@@ -480,12 +207,7 @@ The following code chunk has the following process steps:
     * This data does not have any names, so therefore the names are set by using the `set_names()` function.
 
 ```{r Get Data, eval=TRUE, echo=TRUE, messages=FALSE, errors=FALSE}
-# Steps:
-# 1. Get data from TensorFlow
-# 2. Extract the second element (the test data)
-# 3. Re-name the objects
-
-# Run process
+# Download Data
 cifar <- tf$keras$datasets$cifar10$load_data() %>% 
     extract2(2) %>% 
     set_names(c("images","classes"))
@@ -496,6 +218,7 @@ cifar <- tf$keras$datasets$cifar10$load_data() %>%
 One of the challenges behind accessing this data from the `tensorflow` package is that the classes are only numeric values (`0` to `9`) for each type of image. The definitions for these images can be found on GitHub ([EN10/CIFAR](https://github.com/EN10/CIFAR#classes)). These classes are defined in the following code chunk.
 
 ```{r Define Class List, eval=TRUE, echo=TRUE}
+# Define classes
 ClassList <- list(
     "0"="airplane",
     "1"="automobile",
@@ -518,6 +241,7 @@ ClassList <- list(
 It is important to check the data, to ensure that it has been generated correctly, and all the information looks okay. For this, a custom-function is written (`get_ObjectAttributes()`), the source code for which can be found [here](https://github.com/chrimaho/VanillaNeuralNetworksInR/blob/master/Functions/functions.R). As seen by the following code chunk, the `images` object is a 4-Dimensional numeric array, with `10,000` images, each `32x32` pixels, and `3` colour elements. The entire object is over `117 Mb` large.
 
 ```{r Check Images Data, eval=TRUE, echo=TRUE, message=FALSE, warning=FALSE}
+# Check Images
 cifar %>% 
     extract2("images") %>% 
     get_ObjectAttributes("cifar$images") %>% 
@@ -527,6 +251,7 @@ cifar %>%
 When checking the `classes` object, it is a 2-Dimensional numeric array (with only 1 column), but with the same number of images as the `images` object (which is to be expected), with the frequency of each class label having exactly `1000` images each. The total size is less than `40 Kb`.
 
 ```{r Check Classes Data, eval=TRUE, echo=TRUE, message=FALSE, warning=FALSE}
+# Check classes
 cifar %>% 
     extract2("classes") %>% 
     get_ObjectAttributes(name="cifar$classes", print_freq=TRUE) %>% 
@@ -535,33 +260,13 @@ cifar %>%
 
 ## Check Images
 
+After having gained an appreciation of the size of the objects in memory, it is then worth while to check the actual images themselves. As humans, we understand the actual images and the colours, better than we understand the numbers.
 
+In order to visualise the images, two custom functions are written, as shown in the following code chunk. These functions take in the data (as a 4-Dimensional array), and visualise the images as a plot.
 
-```{r Extract Images, eval=TRUE, echo=TRUE}
+```{r Function: Make Image, eval=FALSE, echo=TRUE}
 set_MakeImage <- function(image, index=1) {
-    #' @title Convert Image from Array to RGB Image
-    #' @description Slice a given 4-D array at a given index, and convert that to an RGB image.
-    #' @note `image` must be a 3-D array, the same as returned from the function `tensorflow::tf$keras$datasets$cifar10$load_data()[[2]][[1]][1,,,]`.
-    #' @param image `array`. A 3-D array of image, where the dimensions are: `width`x`height`x`colours`.
-    #' @param index `integer`. The index of the image to be returned. Default value `1`.
-    #' @return An `rgb()` matrix, the result of running the `grDevices::rgb()` function.
     #' @seealso https://stackoverflow.com/questions/32113942/importing-cifar-10-data-set-to-r#answer-39672323
-    #' @author chrimaho
-    #' @examples
-    #' set_MakeImage(
-    #'     image=tensorflow::tf$keras$datasets$cifar10$load_data()[[2]][[1]][1,,,],
-    #'     index=1
-    #' )
-    
-    # Packages
-    require(dplyr)
-    require(grDevices)
-    require(assertthat)
-    
-    # Validations
-    assert_that(image %>% is.array, msg="'image' must be type 'array'.")
-    assert_that(image %>% dim %>% length == 3, msg="'image' must have 4 dimensions.")
-    assert_that(index %>% is.integer, msg="'index' must be type 'integer'.")
     
     # Extract elements
     image.r <- image[,,1]
@@ -577,183 +282,265 @@ set_MakeImage <- function(image, index=1) {
     # Return
     return(image.rgb)
 }
+```
 
-
+```{r Function: Plot Image, eval=FALSE, echo=TRUE}
 plt_PlotImage <- function(images, classes, index=1) {
-    #' @title Plot Image from a given 4-D block of images
-    #' @description Plot a specific image from a given 4-D block of images.
-    #' @note `images` must be a 4-D array, the same as returned from the function `tensorflow::tf$keras$datasets$cifar10$load_data()[[2]][[1]]`.
-    #' @param images `array`. A 4-D array of image, where the dimensions are: `images`x`width`x`height`x`colours`.
-    #' @param classes `array`. A 2-D array of integers, where the dimensions are: `images`x`class`. The first dimension must be the same length as `dim(images)[1]`, but the second dimension can only be length=`1`. In other words, it's a single-column matrix.
-    #' @param index `integer`. The index of the image to be plotted. Default value `1`.
-    #' @return Nothing is returned.
     #' @seealso https://stackoverflow.com/questions/12918367/how-to-plot-with-a-png-as-background#answer-12918368
-    #' @author chrimaho
-    #' @examples
-    #' data <- tensorflow::tf$keras$datasets$cifar10$load_data()
-    #' plt_PlotImage(
-    #'     images=data[[2]][[1]],
-    #'     classes=data[[2]][[2]],
-    #'     index=1
-    #' )
-    
-    # Libraries
-    require(dplyr)
-    require(grDevices)
-    require(assertthat)
-    require(grid)
-    
-    # Validations
-    assert_that(images %>% is.array)
-    assert_that(images %>% dim %>% length == 4, msg="'images' must have 4 dimensions.")
-    assert_that(index %>% is.integer)
     
     # Slice images
     image <- images[index,,,]
     image %<>% set_MakeImage(index)
-    lbl <- classes[index] %>% as.character() %>% ClassList[[.]]
+    lbl <- classes %>% extract(index) %>% as.character() %>% ClassList[[.]]
     
-    # Plot image
-    plot.new()
-    lim <- par()
-    rasterImage(image, lim$usr[1], lim$usr[3], lim$usr[2], lim$usr[4], interpolate=FALSE)
-    title(lbl, font.main=2)
+    # Create plot
+    plot <- ggplot() + 
+        ggtitle(lbl) +
+        draw_image(image, interpolate=FALSE)
     
     # Return
-    return(invisible(NULL))
+    return(plot)
 }
 ```
 
+When the function is run on the top 16 images, the following is displayed. As shown, the images are extremely pixelated (which is expected, as they are only 32x32 pixels each), and you can see how each of the images are categorised.
 
+```{r View Images, eval=TRUE, echo=TRUE, fig.width=12, fig.height=12}
+# Set list
+lst <- list()
 
-```{r View Images, eval=TRUE, echo=TRUE}
-for (i in 1:20) {
-    plt_PlotImage(cifar$images, cifar$classes, i)
+# Loop 16 images
+for (image in 1:16) {
+    lst[[image]] <- plt_PlotImage(cifar$images, cifar$classes, image)
 }
+
+# View images
+gridExtra::grid.arrange(grobs=lst, ncol=4)
 ```
 
-## Fix data {#fixdata}
+# Prepare the Data {#prepdata}
 
-```{r}
-cifar %>% extract2("classes") %>% head(100) %>% as.vector()
-cifar$classes <- ifelse(cifar$classes==1,1,0)
-cifar %>% extract2("classes") %>% head(100) %>% as.vector()
+There are four steps to preparing the data:
+
+1. Reclassify
+1. Split
+1. Reshape
+1. Standardise
+
+## Reclassify {#reclassify}
+
+For the purposes of this paper, let's assume that we are trying to predict whether or not the picture is a `car` or `not`. This will require transforming the data in to a binary classification problem, where the Neural Network will be looking to predict a `1` or a `0` our of the data. This will mean that the model output will be a probability distribution of scores, which can be easily classified by changing the `cutoff` variable.
+
+First step is to reclassify the data so that all the cars have the value `1`, and everything else is `0`. We know from the classes we defined before that the car's already have the value `1`, which means the transformation will only need to occur for all the other classes.
+
+```{r Reclassify Classes, eval=TRUE, echo=TRUE}
+# Implement within a pipe
+cifar[["classes"]] <- cifar %>%
+    extract2("classes") %>% 
+    (function(classes){
+        
+        # View initial classes
+        classes %>% as.vector %>% head(40) %>% print
+        
+        # Reclassify
+        classes <- ifelse(classes==1,1,0)
+        
+        # View reclassified classes
+        classes %>% as.vector %>% head(40) %>% print
+        
+        # Return
+        return(classes)
+    })
 ```
-
 ## Split Data {#splitdata}
 
+The next task is to split the data in to a training and testing set. The reason for doing this is covered elsewhere (such sites such as [Wikipedia's Cross-Validation](https://en.wikipedia.org/wiki/Cross-validation_%28statistics%29), and [Google's Machine Learning Crash Course: Training and Test Sets Splitting Data](https://developers.google.com/machine-learning/crash-course/training-and-test-sets/splitting-data)).
+
+Firstly, to get an appreciation of the current split of the data, the following code chunk visualises this data using the `ggplot2` package. As show, the data is currently distributed with `90%` with the class `0`, and the remaining `10%` with the class `1`.
+
+```{r Plot Original Classes, eval=TRUE, echo=TRUE}
+cifar %>% 
+    extract("classes") %>% 
+    table(dnn="classes") %>% 
+    data.frame() %>% 
+    ggplot(aes(classes, Freq, fill=classes)) + 
+        geom_col(colour="black") +
+        geom_label(
+            aes(label=Freq),
+            show.legend=FALSE
+        ) +
+        scale_y_continuous(breaks=seq(0,10000,1000)) +
+        theme(panel.grid.minor.y=element_blank()) +
+        labs(
+            title="Count of Each Class"
+        )
+```
+
+To implement this data splitting, we are using the `caret::createDataPartition()` function. This creates a `partition` object, which is then used to segregate the `cifar` data accordingly. The proportion of splitting was arbitrarily chosen at `70%` for training, and the remaining for testing. However, it could be justified for this to be `80%`; this a is hyperparameter which can be tweaked at a later stage.
+
 ```{r Split Data, eval=TRUE, echo=TRUE}
+# Set seed for reproducibility
 set.seed(1234)
+
+# Create partition
 partition <- createDataPartition(cifar$classes, p=0.7, list=FALSE)
+
+# Split data
 trn_img <- cifar$images[partition,,,]
 tst_img <- cifar$images[-partition,,,]
 trn_cls <- cifar$classes[partition]
 tst_cls <- cifar$classes[-partition]
-rm(partition)
 ```
 
+After splitting, the data is re-plotted, and the train/test split is easily seen to have achieved an even `70%` distribution over the two classes.
+
+```{r Plot Split Classes, eval=TRUE, echo=TRUE}
+rbind(
+    trn_cls %>% table,
+    tst_cls %>% table
+) %>% 
+    set_rownames(c("train","test")) %>% 
+    data.frame() %>% 
+    rename_all(str_remove_all, "X") %>% 
+    rownames_to_column("data") %>% 
+    pivot_longer(2:3, names_to="classes", values_to="Freq") %>% 
+    mutate(
+        label=paste(data, classes, sep=": "),
+        data=factor(data, levels=c("train","test"))
+    ) %>% 
+    ggplot(aes(classes, Freq, fill=data), position="dodge") + 
+        geom_col(colour="black", position="dodge") +
+        geom_label(
+            aes(label=Freq), 
+            position=position_dodge(width=0.9),
+            show.legend=FALSE
+        ) +
+        scale_y_continuous(breaks=seq(0,10000,1000)) +
+        theme(panel.grid.minor.y=element_blank()) +
+        labs(
+            title="Count of Each Class",
+            subtitle="Split by Train/Test"
+        )
+```
+
+Another method for checking that the data has been split properly, is to again run the `get_ObjectAttributes()` function, as shown in the following code chunk. The information shown here is consistent with the plot above. It is also interesting to note that the Training Image array is `82 Mb` large, which will be important to know for later checking the performance of forward propagation.
+
 ```{r Check Splitting, eval=TRUE, echo=TRUE}
-for (i in c("trn_img","tst_img","trn_cls","tst_cls")) {
-    j <- get(i)
-    get_ObjectAttributes(j, i) %>% cat 
+for (name in c("trn_img","tst_img","trn_cls","tst_cls")) {
+    get_ObjectAttributes(get(name), name, if (name %in% c("trn_cls","tst_cls")) TRUE else FALSE) %>% cat 
 }
-rm(i,j)
 ```
 
 ## Reshape Data {#reshapedata}
 
+For the first `input` layer of our Neural Network, we want to be a single dimension of nodes. Therefore, it is necessary to reshape the data from a 4-Dimensional array in to a 2-Dimensional array. This can be done quite easily with the `array()` function, as it has the `dim=` argument which can be used to specify the dimensions required.
+
+The desired matrix size should have each _image_ in a new row, and each _pixel_ on a different column. Because each pixel is comprised of the 2nd, 3rd and 4th dimensions, we need to take the _product_ of these three numbers, and use that to specify the desired number of columns. Effectively, we are running the equation: $32\times32\times3$, which equates to having $3072$ columns. This equation is implemented programmatically in-line, in the next code chunk.
+
 ```{r Reshape Data, eval=TRUE, echo=TRUE}
-trn_img <- array(trn_img, dim=c(dim(trn_img)[1], prod(dim(trn_img)[2:4])))
-tst_img <- array(tst_img, dim=c(dim(tst_img)[1], prod(dim(tst_img)[2:4])))
-trn_cls <- array(trn_cls, dim=c(1,length(trn_cls))) %>% t()
-tst_cls <- array(tst_cls, dim=c(1,length(tst_cls))) %>% t()
+# Reshape data
+trn_img %<>% array(dim=c(
+    dim(.) %>% extract(1), 
+    dim(.) %>% extract(2:4) %>% prod() 
+))
+
+tst_img %<>% array(dim=c(
+    dim(.)[1], 
+    dim(.)[2:4] %>% prod() 
+))
+
+trn_cls %<>% array(dim=c(
+    length(.),
+    1
+))
+
+tst_cls %<>% array(dim=c(
+    length(.),
+    1
+))
 ```
 
+When checking the object attributes once again, you will see that the image data has been manipulated correctly to have the number of rows as the number of images, and the number of columns as the number of pixels.
+
 ```{r Check Data Shapes, eval=TRUE, echo=TRUE}
-for (i in c("trn_img","tst_img","trn_cls","tst_cls")) {
-    print(c(i %s+% ":", i %>% get %>% dim %>% paste))
+for (name in c("trn_img","tst_img","trn_cls","tst_cls")) {
+    get_ObjectAttributes(get(name), name, FALSE) %>% cat 
 }
 ```
 
 ## Standardise Data {#standardisedata}
+
+The final step to preparing the data is to standardise the data so that all the elements are between `0` and `1`. The reason for this is to prevent exploding and vanishing gradients in later steps, as the Neural Network will try to fit to all the peaks and troughs which is caused from having the data in a `0` to `255` value range.
+
+As documented on the [TensorFlow](https://www.tensorflow.org/api_docs/python/tf/keras/datasets/cifar10/load_data) website, the [CIFAR10](https://www.cs.toronto.edu/~kriz/cifar.html) data set consists of RGB Image data. And, as documented on [Wikipedia](https://en.wikipedia.org/wiki/RGB_color_model), RGB data are all values between `0` and `255`.
+
+Therefore, what is necessary to do is to divide all the elements by `255`, and they will inevitably result in a value between `0` and `1`. As the image data is currently in an array, the function in the below code chunk will run as a _vectorised function_ over the entire array, dividing all elements by 255 accordingly.
 
 ```{r Standardise Data, eval=TRUE, echo=TRUE}
 trn_img <- trn_img/255
 tst_img <- tst_img/255
 ```
 
+The data is now ready for the network. Next step is to build the network.
+
 # Instantiate the Network {#instantiatenetwork}
 
 ## Set the Architecture
 
-- 5 hidden layers
-- 7 total layers
-    1. input = 3072
-    2. h1 = 100
-    3. h2 = 75
-    4. h3 = 50
-    5. h4 = 30
-    6. h5 = 20
-    7. output = 10
-- network is a list of lists
-- each layer is a list
-- all elements of the all lists are names
+Some quick notes on what the Network will _actually_ be:
 
-```{r Instantiate Network Definition, eval=TRUE, echo=TRUE}
+* Overall architecture is a list.
+* Each element of the master list is another list, and these are the layers of the network.
+* The first layer will always be the `input` layer.
+* The last layer will always be the `output` layer.
+* Each of the layers in between will be the `hidden` layers, and the names for these layers are simply named with numbers.
+* Each element of each layer will all be labelled the same, defined as follows:
+
+    * `nodz`: Number of nodes in this layer.
+    * `inpt`: Input matrix. Aka `A_prev`. This is a duplicate of the activation of the previous layer, so for large networks this needs to be taken in to consideration.
+    * `wgts`: Weights matrix. Aka `W`.
+    * `bias`: Bias vector. Aka `b`.
+    * `linr`: Linear matrix. Aka `Z`. This is the result of the linear algebra between `inpt`, `wgts` and `bias`.
+    * `acti`: Activation matrix. Aka `A`. The result of applying an activation function to the `linr` matrix.
+    * `acti_func`: The activation function used.
+    * `cost`: The overall cost of the model. This is a single value (the overall cost of the model), but is copied to each layer of the model.
+    * `back_cost`: Gradient of the cost vector. Aka `dA_cost`.
+    * `back_acti`: Gradient of the Activation matrix. Aka `dA`. The result of differentiation after having applied back propagation. With a given cost function.
+    * `back_linr`: Gradient of the Linear algebra matrix. Aka `dZ`. The result of backwards linear differentiation back propagation.
+    * `back_wgts`: Gradient of the Weights matrix. Aka `dW`. Also the result of back-prop.
+    * `back_bias`: Gradient of the Bias vector. Aka `db`. Also the result of back-prop.
+
+For the below code chunk, the function `set_InstantiateNetwork()` is defined. It only has three input arguments, which specify the number of nodes to be used in each layer. Based on this information, the model will be instantiated and returned, ready for initialisation, in the next step.
+
+```{r Instantiate Network Definition, eval=FALSE, echo=TRUE}
 set_InstantiateNetwork <- function(input=50, hidden=c(30,20,10), output=1) {
-    #' @title Instantiate the Network
-    #' @description Instantiate the network.
-    #' @note This is just to set up an empty network. Which is effectively a list of lists.
-    #' @param input `integer`. The number of nodes in the `input` layer of the network. Default value `50`.
-    #' @param hidden `vector`. The number of nodes in each `hidden` layer of the network. Default value `c(30,20,10)`.
-    #' @param output `integer`. The number of nodes in the `output` layer of the network. Default value `1`.
-    #' @return An instantiated network. A `list` of `lists`.
-    #' @author chrimaho
-    #' @examples
-    #' # Works
-    #' set_InstantiateNetwork(
-    #'     input=50,
-    #'     hidden=c(30,20,10),
-    #'     output=1
-    #' )
-    
-    # Packages
-    require(assertthat)
-    require(dplyr)
-    
-    # Validations
-    assert_that(input %>% is.integer, msg="'input' must be type 'integer'.")
-    assert_that(hidden %>% is.vector, msg="'hidden' must be type 'vector'.")
-    assert_that(hidden %>% is.integer %>% all, msg="All elements of 'hidden' must be integers.")
-    assert_that((hidden > 0) %>% all, msg="All elements of 'hidden' must be greater than '0'.")
-    assert_that(output %>% is.integer, msg="'input' must be type 'integer'.")
-    
+
     # Set up
     model = list()
-    names = c(
+    layers = c(
         "input",
         1:length(hidden),
         "output"
     )
     
     # Loop
-    for (layer in names) {
+    for (layer in layers) {
         
         # Make layer
         model[[layer]] <- list(
-            "nodz"      = "",  #<-- Number of nodes in this layer.
-            "inpt"      = "",  #<-- Input matrix. Aka 'A_prev'. This is a duplicate of the activation of the previous layer, so for large networks this needs to be taken in to consideration.
-            "wgts"      = "",  #<-- Weights matrix. Aka 'W'.
-            "bias"      = "",  #<-- Bias vector. Aka 'b'.
-            "linr"      = "",  #<-- Linear matrix. Aka 'Z'. This is the result of the linear algebra between inpt, wgts and bias.
-            "acti"      = "",  #<-- Activation matrix. Aka 'A'. The result of applying an activation function to the linr matrix.
-            "acti_func" = "",  #<-- The activation function used.
-            "cost"      = "",  #<-- The overall cost of the model. This is a single value (the overall cost of the model), but is copied to each layer of the model.
-            "back_cost" = "",  #<-- Gradient of the cost vector. Aka 'dA_cost'.
-            "back_acti" = "",  #<-- Gradient of the Activation matrix. Aka 'dA'. The result of differentiation after having applied back propagation. with a given cost function.
-            "back_linr" = "",  #<-- Gradient of the Linear algebra matrix. Aka 'dZ'. The result of backwards linear differentiation back propagation.
-            "back_wgts" = "",  #<-- Gradient of the Weights matrix. Aka 'dW'. Also the result of back-prop.
-            "back_bias" = ""   #<-- Gradient of the Bias vector. Aka 'db'. Also the result of back-prop.
+            "nodz"      = "",
+            "inpt"      = "",
+            "wgts"      = "",
+            "bias"      = "",
+            "linr"      = "",
+            "acti"      = "",
+            "acti_func" = "",
+            "cost"      = "",
+            "back_cost" = "",
+            "back_acti" = "",
+            "back_linr" = "",
+            "back_wgts" = "",
+            "back_bias" = "" 
         )
         
         # Set nodes
@@ -773,6 +560,12 @@ set_InstantiateNetwork <- function(input=50, hidden=c(30,20,10), output=1) {
 }
 ```
 
+The below code chunk instantiates the network. The model will be set up with the following number of nodes in each layer:
+
+* The `input` layer will have 3072 nodes, the same number calculated above.
+* Each `hidden` layer will have a decreasing number of nodes, from `100` down to `20` notes.
+* The `output` layer will have 1 node, because this one node will be a floating point number betwee `0` and `1`, which will be used to predict whether the relevant image is a `car` or `not`.
+
 ```{r Instantiate Network, eval=TRUE, echo=TRUE}
 network_model <- set_InstantiateNetwork(
     input=3072, 
@@ -781,28 +574,27 @@ network_model <- set_InstantiateNetwork(
 )
 ```
 
+There is a very good website available which allows Neural Networks to be visualised: [http://alexlenail.me/NN-SVG/AlexNet.html](http://alexlenail.me/NN-SVG/AlexNet.html).
+
 # Initialise the Network {#initialisenetwork}
+
+There are four steps to initialising the network:
+
+1. Set the Weight Initialisation functions
+1. Set the Layer Initialisation function
+1. Set the Model Initialisation function
+1. Run the Initialisation
 
 ## Weight Initialisation
 
+At it's core, weight initialisation is simply generating a random normal number (with $\mu=0$ and $\sigma=1$). However, by only using this randomly generated number, the model gradients are found to be exploding or vanishing when attempting to train deeper neural networks. Therefore, these weights need to be scaled after they are initialised, in order to be robust enough to continue to be trained at deeper layers.
+
+There are many algorithms that can be used for weight initialisation. Two of the more common ones are the Xavier algorithm, and the He algorithm. 
+
 ```{r Weight Initialisation, eval=TRUE, echo=TRUE}
 let_InitialiseXavier <- function(nodes_in, nodes_out, order=6) {
-    #' @title Xavier Initialisation
-    #' @description Initialise the weights based on the Xavier algorithm.
-    #' @param nodes_in `integer`. The number of nodes coming in to this layer (ie. the number of nodes in the previous layer).
-    #' @param nodes_out `integer`. The number of nodes outgoing from this layer (ie. the number of nodes in this layer).
-    #' @param order `integer`. The order of magnitude for this equation. Default value `6`.
-    #' @return A floating point number.
     #' @seealso https://towardsdatascience.com/weight-initialization-in-neural-networks-a-journey-from-the-basics-to-kaiming-954fb9b47c79
     #' @seealso http://proceedings.mlr.press/v9/glorot10a/glorot10a.pdf
-    #' @author chrimaho
-    #' @examples
-    #' # Works
-    #' let_InitialiseXavier(
-    #'     nodes_in=30,
-    #'     nodes_out=20,
-    #'     order=6
-    #' )
     
     # Packages
     require(assertthat)
@@ -824,21 +616,8 @@ let_InitialiseXavier <- function(nodes_in, nodes_out, order=6) {
 
 
 let_InitialiseHe <- function(nodes_in, nodes_out, order=2) {
-    #' @title He Initialisation
-    #' @description Initialise the weights based on the He initialisation algorithm.
-    #' @param nodes_in `integer`. The number of nodes coming in to this layer (ie. number of nodes in previous layer).
-    #' @param nodes_out `integer`. The number of nodes outgoing from this layer (ie. the number of nodes in this layer). !NOTE! This value is not used in this function, but is included to make the arguments of this function consistent with those of the other initialisation functions.
-    #' @param order `integer`. The order of magnitude for this equation. Default value `2`.
-    #' @return A floating point number.
     #' @seealso https://towardsdatascience.com/weight-initialization-in-neural-networks-a-journey-from-the-basics-to-kaiming-954fb9b47c79
     #' @seealso http://proceedings.mlr.press/v9/glorot10a/glorot10a.pdf
-    #' @author chrimaho
-    #' @examples
-    #' # Works
-    #' let_InitialiseHe(
-    #'     nodes_in=30,
-    #'     order=2
-    #' )
     
     # Packages
     require(assertthat)
