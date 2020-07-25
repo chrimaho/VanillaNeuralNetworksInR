@@ -1,3 +1,26 @@
+#==============================================================================#
+#                                                                              #
+#    Title      : Functions for Creating a Vanilla Neural Network              #
+#    Purpose    : These functions will be imported from within the notebook    #
+#                 by calling the `source()` function.                          #
+#    Notes      : They are different because these functions contain more      #
+#                 commentary and comments and validations than what is         #
+#                 contained in the notebook.                                   #
+#    Author     : chrimaho                                                     #
+#    Created    : 25/Jul/2020                                                  #
+#    References : All references are contained within the specific functions.  #
+#    Sources    : Sources                                                      #
+#    Edited     : 25/Jul/2020 - Initial creation                               #
+#                                                                              #
+#==============================================================================#
+
+
+#------------------------------------------------------------------------------#
+#                                                                              #
+#    Generic Functions                                                      ####
+#                                                                              #
+#------------------------------------------------------------------------------#
+
 str_Format <- function(string, ...) {
     #' @title String Formatter
     #' @description Take an input string, and substitute in-string variables.
@@ -28,7 +51,7 @@ str_Format <- function(string, ...) {
     #' "Sammy the {} {} a {}" %>%
     #'     str_Format("shark", "made", "house")
     
-    # Import packages
+    # Packages
     require(stringr)
     require(magrittr)
     require(dplyr)
@@ -117,7 +140,60 @@ get_CountOfElementsWithCondition <- function(vector_of_elements, condition=NULL)
 }
 
 
-get_ObjectAttributes <- function(object, name=deparse(substitute(object))) {
+is.integer <- function(value) {
+    #' @title Check if is integer.
+    #' @description This is a wrapper around the `DescTools::IsWhole()` function.
+    #' @note The `DescTools::IsWhole()` is the only package that genuinely works on integer values. Other functions such as `base::is.integer()` and `purrr::is_integer()` do not work properly...
+    #' @param value `numeric`. The value to be checked.
+    #' @return A logical value confirming if `value` is an integer or not.
+    #' @author chrimaho
+    #' @examples
+    #' # Works
+    #' is.integer(
+    #'     value=1
+    #' )
+    #' 
+    #' # Fails
+    #' is.integer(
+    #'     value=0.5
+    #' )
+    
+    # Packages
+    require(dplyr)
+    require(DescTools)
+    
+    # Validations
+    #assert_that(value %>% is.numeric, msg="'value' must be type 'numeric'.")
+    
+    # Do work
+    return(IsWhole(value))
+}
+
+
+get_TimeDifference <- function(start_time, finish_time=Sys.time()) {
+    
+    assert_that(start_time %>% is.time, msg="'start_time' must be type 'time'.")
+    assert_that(finish_time %>% is.time, msg="'finish_time' must be type 'time'.")
+    
+    diff_time <- difftime(finish_time, start_time, units="auto")
+    
+    str_diff_time <- paste(
+        diff_time %>% round(2),
+        diff_time %>% attributes() %>% extract2("units")
+    )
+    
+    return(str_diff_time)
+    
+}
+
+
+#------------------------------------------------------------------------------#
+#                                                                              #
+#    Check Data Functions                                                   ####
+#                                                                              #
+#------------------------------------------------------------------------------#
+
+get_ObjectAttributes <- function(object, name=deparse(substitute(object)), print_freq=FALSE) {
     #' @title Get Object Attributes
     #' @description Extract and print the key attributes of an object, including `name`, `size`, `class`, `type`, `mode`, `dims`.
     #' @note In order to do pretty-print, parse the result of this function in to the `cat()` function.
@@ -143,21 +219,38 @@ get_ObjectAttributes <- function(object, name=deparse(substitute(object))) {
     require(magrittr)
     require(dplyr)
     
+    # Validations
+    assert_that(name %>% is.string, msg="'name' must be type 'string'.")
+    assert_that(print_freq %>% is.flag, msg="'print_freq' must be type 'flag'.")
+    
     # Get attributes
     if (missing(name)) {name <- deparse(substitute(object))}
     name %<>% paste("Name :", .)
     size  <- object %>% object.size() %>% format(units="auto") %>% paste("Size :", .)
-    class <- object %>% class()       %>% paste("Clas :", .)
+    class <- object %>% class()       %>% paste(collapse=",") %>%  paste("Clas :", .)
     type  <- object %>% typeof()      %>% paste("Type :", .)
     mode  <- object %>% mode()        %>% paste("Mode :", .)
     dims  <- object %>% 
         { if(class(.) %in% c("matrix","data.frame","list","array")) {
             dim(.) %>% paste(collapse="x")
-          } else {
-              length(.)
-          } 
+        } else {
+            length(.)
+        } 
         } %>%  
         paste("Dims :", .)
+    if (print_freq) {
+        assert_that(object %>% dim %>% length <= 2, msg="If 'print_freq' is TRUE, then the dimensions of 'object' must be less than or equal to '2'.")
+        freq <- object %>% 
+            table(dnn="label") %>% 
+            as.data.frame() %>% 
+            as.matrix(rownames.force=TRUE) %>% 
+            noquote %>% 
+            capture.output %>% 
+            paste0(collapse="\n   ") %>% 
+            paste("Freq :\n  ", .)
+    } else {
+        freq <- NULL
+    }
     
     # Combine attributes
     output <- paste(
@@ -170,40 +263,14 @@ get_ObjectAttributes <- function(object, name=deparse(substitute(object))) {
         sep="\n - "
     )
     
+    # Add Freq
+    if (print_freq) {
+        output %<>% paste(freq, sep="\n - ")
+    }
+    
     # Return
     return(output %>% paste0("\n"))
 }
-
-
-is.integer <- function(value) {
-    #' @title Check if is integer.
-    #' @description This is a wrapper around the `DescTools::IsWhole()` function.
-    #' @note The `DescTools::IsWhole()` is the only package that genuinely works on integer values. Other functions such as `base::is.integer()` and `purrr::is_integer()` do not work properly...
-    #' @param value `numeric`. The value to be checked.
-    #' @return A logical value confirming if `value` is an integer or not.
-    #' @author chrimaho
-    #' @examples
-    #' # Works
-    #' is.integer(
-    #'     value=1
-    #' )
-    #' 
-    #' # Fails
-    #' is.integer(
-    #'     value=0.5
-    #' )
-    
-    # Packages
-    require(dplyr)
-    require(DescTools)
-    
-    # Validations
-    assert_that(value %>% is.numeric, msg="'value' must be type 'numeric'.")
-    
-    # Do work
-    return(IsWhole(value))
-}
-
 
 set_MakeImage <- function(image, index=1) {
     #' @title Convert Image from Array to RGB Image
@@ -290,6 +357,12 @@ plt_PlotImage <- function(images, classes, index=1) {
     return(invisible(NULL))
 }
 
+
+#------------------------------------------------------------------------------#
+#                                                                              #
+#    Instantiation and Initialisation Functions                             ####
+#                                                                              #
+#------------------------------------------------------------------------------#
 
 set_InstantiateNetwork <- function(input=50, hidden=c(30,20,10), output=1) {
     #' @title Instantiate the Network
@@ -562,6 +635,13 @@ set_InitialiseModel <- function(network_model, initialisation_algorithm="xavier"
     # Return
     return(network_model)
 }
+
+
+#------------------------------------------------------------------------------#
+#                                                                              #
+#    Forward Propagation Functions                                          ####
+#                                                                              #
+#------------------------------------------------------------------------------#
 
 set_LinearForward <- function(inpt, wgts, bias) {
     #' @title Linear Forward Algebra
@@ -894,6 +974,12 @@ set_ApplyCost <- function(network_model, cost) {
 }
 
 
+#------------------------------------------------------------------------------#
+#                                                                              #
+#    Backward Propagation Functions                                         ####
+#                                                                              #
+#------------------------------------------------------------------------------#
+
 get_DifferentiateCost <- function(pred=NA, true=NA) {
     #' @title Differentiate Cost Value
     #' @description Differentiate the Cost value.
@@ -1215,6 +1301,12 @@ set_UpdateModel <- function(network_model, learning_rate=0.001) {
 }
 
 
+#------------------------------------------------------------------------------#
+#                                                                              #
+#    Training Functions                                                     ####
+#                                                                              #
+#------------------------------------------------------------------------------#
+
 let_TrainModel <- function(x_train, y_train,
                            input_nodes=dim(x_train)[2], hidden_nodes=c(100, 50, 10), output_nodes=1,
                            initialisation_algorithm="xavier", initialisation_order="layers",
@@ -1351,6 +1443,12 @@ let_TrainModel <- function(x_train, y_train,
     return(output)
 }
 
+
+#------------------------------------------------------------------------------#
+#                                                                              #
+#    Predicting and Assessment Functions                                    ####
+#                                                                              #
+#------------------------------------------------------------------------------#
 
 get_Prediction <- function(x_test, y_test, network_model, threshold=0.5) {
     #' @title Get Prediction from Model
