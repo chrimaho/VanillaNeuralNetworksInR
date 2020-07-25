@@ -268,7 +268,7 @@ get_ObjectAttributes <- function(object, name=deparse(substitute(object)), print
     type  <- object %>% typeof()      %>% paste("Type :", .)
     mode  <- object %>% mode()        %>% paste("Mode :", .)
     dims  <- object %>% 
-        { if(class(.) %in% c("matrix","data.frame","list","array")) {
+        { if(class(.)[1] %in% c("matrix","data.frame","list","array")) {
             dim(.) %>% paste(collapse="x")
         } else {
             length(.)
@@ -374,6 +374,7 @@ plt_PlotImage <- function(images, classes, index=1) {
     require(grDevices)
     require(assertthat)
     require(grid)
+    require(cowplot)
     
     # Validations
     assert_that(images %>% is.array)
@@ -383,16 +384,15 @@ plt_PlotImage <- function(images, classes, index=1) {
     # Slice images
     image <- images[index,,,]
     image %<>% set_MakeImage(index)
-    lbl <- classes[index] %>% as.character() %>% ClassList[[.]]
+    lbl <- classes %>% extract(index) %>% as.character() %>% ClassList[[.]]
     
-    # Plot image
-    plot.new()
-    lim <- par()
-    rasterImage(image, lim$usr[1], lim$usr[3], lim$usr[2], lim$usr[4], interpolate=FALSE)
-    title(lbl, font.main=2)
+    # Create plot
+    plot <- ggplot() + 
+        ggtitle(lbl) +
+        cowplot::draw_image(image, interpolate=FALSE)
     
     # Return
-    return(invisible(NULL))
+    return(plot)
 }
 
 
@@ -432,14 +432,14 @@ set_InstantiateNetwork <- function(input=50, hidden=c(30,20,10), output=1) {
     
     # Set up
     model = list()
-    names = c(
+    layers = c(
         "input",
         1:length(hidden),
         "output"
     )
     
     # Loop
-    for (layer in names) {
+    for (layer in layers) {
         
         # Make layer
         model[[layer]] <- list(
