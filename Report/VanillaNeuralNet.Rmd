@@ -152,6 +152,9 @@ theme_update(
 # Set Default rounding length
 options(digits = 4)
 options(scipen = 999)
+
+# Load functions
+source("../Functions/functions.R")
 ```
 
 ```{r Load Custom Functions, eval=TRUE, echo=FALSE}
@@ -224,6 +227,43 @@ str_Format <- function(string, ...) {
     # Return
     return(str_return)
     
+}
+
+
+get_Modulus <- function(value) {
+    #' @title Find minimum modulus value
+    #' @description Add function description.
+    #' @note Add a note for the developer.
+    #' @param value `numeric`. The value to be modularised.
+    #' @return The minimum modulus number of `value`.
+    #' @seealso 
+    #' @author chrimaho
+    #' @examples
+    #' # Works
+    #' get_MaximumMudulus(
+    #'     value=NA,
+    #'     NA=NA
+    #' )
+    
+    # Packages
+    require(assertthat)
+    require(dplyr)
+    require(magrittr)
+    
+    # Validations
+    assert_that(value %>% is.numeric, msg="'value' must be type 'numeric'.")
+    
+    # Do work
+    for (num in 1:value) {
+        if (num == 1) {
+            mod_value <- num
+        } else if (value %% num == 0) {
+            mod_value %<>% c(num)
+        }
+    }
+    
+    # Return
+    return(mod_value)
 }
 
 
@@ -320,7 +360,7 @@ get_TimeDifference <- function(start_time, finish_time=Sys.time()) {
     
 }
 
-get_ObjectAttributes <- function(object, name=deparse(substitute(object))) {
+get_ObjectAttributes <- function(object, name=deparse(substitute(object)), print_freq=FALSE) {
     #' @title Get Object Attributes
     #' @description Extract and print the key attributes of an object, including `name`, `size`, `class`, `type`, `mode`, `dims`.
     #' @note In order to do pretty-print, parse the result of this function in to the `cat()` function.
@@ -346,21 +386,38 @@ get_ObjectAttributes <- function(object, name=deparse(substitute(object))) {
     require(magrittr)
     require(dplyr)
     
+    # Validations
+    assert_that(name %>% is.string, msg="'name' must be type 'string'.")
+    assert_that(print_freq %>% is.flag, msg="'print_freq' must be type 'flag'.")
+    
     # Get attributes
     if (missing(name)) {name <- deparse(substitute(object))}
     name %<>% paste("Name :", .)
     size  <- object %>% object.size() %>% format(units="auto") %>% paste("Size :", .)
-    class <- object %>% class()       %>% paste("Clas :", .)
+    class <- object %>% class()       %>% paste(collapse=",") %>%  paste("Clas :", .)
     type  <- object %>% typeof()      %>% paste("Type :", .)
     mode  <- object %>% mode()        %>% paste("Mode :", .)
     dims  <- object %>% 
         { if(class(.) %in% c("matrix","data.frame","list","array")) {
             dim(.) %>% paste(collapse="x")
           } else {
-              length(.)
+            length(.)
           } 
         } %>%  
         paste("Dims :", .)
+    if (print_freq) {
+        assert_that(object %>% dim %>% length <= 2, msg="If 'print_freq' is TRUE, then the dimensions of 'object' must be less than or equal to '2'.")
+        freq <- object %>% 
+            table(dnn="label") %>% 
+            as.data.frame() %>% 
+            as.matrix(rownames.force=TRUE) %>% 
+            noquote %>% 
+            capture.output %>% 
+            paste0(collapse="\n   ") %>% 
+            paste("Freq :\n  ", .)
+    } else {
+        freq <- NULL
+    }
     
     # Combine attributes
     output <- paste(
@@ -373,13 +430,20 @@ get_ObjectAttributes <- function(object, name=deparse(substitute(object))) {
         sep="\n - "
     )
     
+    # Add Freq
+    if (print_freq) {
+        output %<>% paste(freq, sep="\n - ")
+    }
+    
     # Return
     return(output %>% paste0("\n"))
 }
 ```
 
 
-## Get Data {#getdata}
+# Get Data {#getdata}
+
+## Download Data {#downloaddata}
 
 The dataset to be used is the [CIFAR-10](https://www.cs.toronto.edu/~kriz/cifar.html) dataset. It's chosen for a number of reasons, including:
 
@@ -427,6 +491,8 @@ cifar <- tf$keras$datasets$cifar10$load_data() %>%
     set_names(c("images","classes"))
 ```
 
+## Get Class Definitions {#getclassdefinitions}
+
 One of the challenges behind accessing this data from the `tensorflow` package is that the classes are only numeric values (`0` to `9`) for each type of image. The definitions for these images can be found on GitHub ([EN10/CIFAR](https://github.com/EN10/CIFAR#classes)). These classes are defined in the following code chunk.
 
 ```{r Define Class List, eval=TRUE, echo=TRUE}
@@ -444,23 +510,32 @@ ClassList <- list(
 )
 ```
 
-It is important to check the data, to ensure that it has been generated correctly, and all the information looks okay. For this, a custom-function is written (`get_ObjectAttributes`), the source code for which can be found [here]().
 
-```{r Check Data, eval=TRUE, echo=TRUE, message=FALSE, warning=FALSE}
-# Print result
+# Check Data {#checkimages}
+
+## Check Objects {#checkobjects}
+
+It is important to check the data, to ensure that it has been generated correctly, and all the information looks okay. For this, a custom-function is written (`get_ObjectAttributes()`), the source code for which can be found [here](https://github.com/chrimaho/VanillaNeuralNetworksInR/blob/master/Functions/functions.R). As seen by the following code chunk, the `images` object is a 4-Dimensional numeric array, with `10,000` images, each `32x32` pixels, and `3` colour elements. The entire object is over `117 Mb` large.
+
+```{r Check Images Data, eval=TRUE, echo=TRUE, message=FALSE, warning=FALSE}
 cifar %>% 
-    extract("images") %>% 
-    get_ObjectAttributes() %>% 
+    extract2("images") %>% 
+    get_ObjectAttributes("cifar$images") %>% 
     cat()
-
-cifar %>% 
-    extract("classes") %>% 
-    table
 ```
 
-For this, the custom function `str_Format()` is used. The source code for this function can be found [here]().
+When checking the `classes` object, it is a 2-Dimensional numeric array (with only 1 column), but with the same number of images as the `images` object (which is to be expected), with the frequency of each class label having exactly `1000` images each. The total size is less than `40 Kb`.
 
-## Check Images {#checkimages}
+```{r Check Classes Data, eval=TRUE, echo=TRUE, message=FALSE, warning=FALSE}
+cifar %>% 
+    extract2("classes") %>% 
+    get_ObjectAttributes(name="cifar$classes", print_freq=TRUE) %>% 
+    cat
+```
+
+## Check Images
+
+
 
 ```{r Extract Images, eval=TRUE, echo=TRUE}
 set_MakeImage <- function(image, index=1) {
@@ -548,6 +623,8 @@ plt_PlotImage <- function(images, classes, index=1) {
     return(invisible(NULL))
 }
 ```
+
+
 
 ```{r View Images, eval=TRUE, echo=TRUE}
 for (i in 1:20) {
@@ -1325,7 +1402,6 @@ set_ForwardProp <- function(network_model, data_in, activation_hidden="relu", ac
     # Return
     return(network_model)
 }
-
 ```
 
 ## Run
@@ -1883,44 +1959,6 @@ plt_PlotLearningCurve <- function(model_cost,
 ```
 
 ```{r}
-get_Modulus <- function(value) {
-    #' @title Find minimum modulus value
-    #' @description Add function description.
-    #' @note Add a note for the developer.
-    #' @param value `numeric`. The value to be modularised.
-    #' @return The minimum modulus number of `value`.
-    #' @seealso 
-    #' @author chrimaho
-    #' @examples
-    #' # Works
-    #' get_MaximumMudulus(
-    #'     value=NA,
-    #'     NA=NA
-    #' )
-    
-    # Packages
-    require(assertthat)
-    require(dplyr)
-    require(magrittr)
-    
-    # Validations
-    assert_that(value %>% is.numeric, msg="'value' must be type 'numeric'.")
-    
-    # Do work
-    for (num in 1:value) {
-        if (num == 1) {
-            mod_value <- num
-        } else if (value %% num == 0) {
-            mod_value %<>% c(num)
-        }
-    }
-    
-    # Return
-    return(mod_value)
-}
-```
-
-```{r}
 get_BatchIndexes <- function(vector, batches=get_Modulus(length(vector))[4], batch=1, seed=sample(1:100,1)) {
     #' @title Get the batches for a given vector
     #' @description Add function description.
@@ -2162,9 +2200,122 @@ let_TrainModel <- function(x_train, y_train,
 }
 ```
 
+```{r}
+get_Prediction <- function(x_test, y_test, network_model, threshold=0.5) {
+    #' @title Get Prediction from Model
+    #' @description Use the `network_model` to forward-propagate `x_test` to create a set of predictions. Then, compare these predictions with `y_test`.
+    #' @note Add a note for the developer.
+    #' @param x_test `array`. A 4-D array of images.
+    #' @param y_test `array`. A 2-D array of labels.
+    #' @param network_model `list`. The trained network_model.
+    #' @param threshold `number`. A single value between `0` & `1` that is the threshold for the predicted probabilities.
+    #' @return A `data.frame` with three columns: 1) `probs`: The Probability value of each of the labels, and is the same length as `y_test`; 2) `truth`: The true labels, the exact same vector as `y_test`; 3) `class`: The class of values, defined at a given cutoff value.
+    #' @author chrimaho
+    #' @examples
+    #' # Works
+    #' get_Prediction(
+    #'     x_test=NA,
+    #'     y_test=NA
+    #' )
+    
+    # Packages
+    require(assertthat)
+    require(dplyr)
+    require(magrittr)
+    
+    # Validations
+    assert_that(x_test %>% is.array, msg="'x_test' must be type 'array'.")
+    assert_that(y_test %>% is.array, msg="'y_test' must be type 'array'.")
+    assert_that(threshold %>% is.number, msg="'threshold' must be type 'number'.")
+    assert_that(between(threshold, 0, 1), msg="'threshold must be between '0' and '1'.")
+    assert_that(network_model %>% is.list, msg="'network_model' must be type 'list'.")
+    assert_that(network_model %>% names %>% extract(1) == "input", msg="The first layer of 'network_model' must be 'input'.")
+    assert_that(network_model %>% names %>% rev %>% extract(1) == "output", msg="The last layer of 'network_model' must be 'output'.")
+    for (name in network_model %>% names) {
+        if (!name %in% c("input","output")) {
+            assert_that(name %>% as.numeric %>% is.integer, msg="Each hidden layer in 'network_model' must be an integer value.")
+        }
+    }
+    
+    # Create prediction
+    predic <- set_ForwardProp(
+        network_model=network_model, 
+        data_in=x_test, 
+        activation_hidden="relu", 
+        activation_final="sigmoid"
+    )
+    
+    # Extract probabilities
+    probas <- predic[["output"]][["acti"]]
+    
+    # Define results
+    result <- data.frame(
+        probs=probas,
+        truth=y_test
+    )
+    
+    # Add class
+    result %<>% 
+        mutate(class=ifelse(probas>threshold, 1, 0))
+    
+    # Return
+    return(result)
+}
+
+
+plt_ConfusionMatrix <- function(confusion_matrix) {
+    #' @title Add function title
+    #' @description Add function description.
+    #' @note Add a note for the developer.
+    #' @param confusion_matrix `caret::confusionMatrix()`. The confusion matrix, as produced by `cared::confusionMatrix()`.
+    #' @return A ggplot object.
+    #' @seealso https://stackoverflow.com/questions/37897252/plot-confusion-matrix-in-r-using-ggplot
+    #' @author chrimaho
+    #' @examples
+    #' # Works
+    #' plt_ConfusionMatrix(
+    #'     confusion_matrix=NA,
+    #'     title=NA
+    #' )
+    
+    # Packages
+    require(assertthat)
+    require(dplyr)
+    
+    # Validations
+    assert_that((confusion_matrix %>% class) == "confusionMatrix", msg="'confusion_matrix' must be class 'confusionMatrix()', as generated by the 'caret::confusionMatrix()' function.")
+    
+    # Do work
+    plot <- confusion_matrix %>% 
+        extract("table") %>% 
+        as.data.frame() %>% 
+        rename_all(str_remove_all, "table.") %>% 
+        rename("Prediction"=1, "Reference"=2) %>% 
+        mutate(goodbad = ifelse(Prediction == Reference, "good", "bad")) %>%
+        group_by(Reference) %>% 
+        mutate(prop = Freq/sum(Freq)) %>% 
+        ungroup() %>% 
+        {
+            ggplot(., aes(x = Reference, y = Prediction, fill = goodbad, alpha = prop)) +
+                geom_tile() +
+                geom_text(aes(label = Freq), vjust = .5, fontface  = "bold", alpha = 1) +
+                scale_fill_manual(values = c(good = "green", bad = "red")) +
+                scale_x_discrete(limits=levels(.$Reference), position="top") +
+                scale_y_discrete(limits=rev(levels(.$Prediction))) +
+                labs(
+                    title="Confusion Matrix",
+                    subtitle=paste0("For: '", .$Prediction[1], "' vs '", .$Prediction[2], "'")
+                )
+        }
+    
+    # Return
+    return(plot)
+}
+```
+
 ## Quick Test
 
-```{r, fig.width=15, fig.height=8}
+```{r, fig.width=15, fig.height=8, message=FALSE}
 training_output <- let_TrainModel(
     x_train=trn_img, y_train=trn_cls,
     input_nodes=dim(trn_img)[2], hidden_nodes=c(100,75,50,30,20), output_nodes=1,
@@ -2290,120 +2441,6 @@ $$ \begin{bmatrix} `r matrix(1:12, ncol=3)` \end{bmatrix} $$
 # Predict
 
 ## Set Up
-
-```{r}
-get_Prediction <- function(x_test, y_test, network_model, threshold=0.5) {
-    #' @title Get Prediction from Model
-    #' @description Use the `network_model` to forward-propagate `x_test` to create a set of predictions. Then, compare these predictions with `y_test`.
-    #' @note Add a note for the developer.
-    #' @param x_test `array`. A 4-D array of images.
-    #' @param y_test `array`. A 2-D array of labels.
-    #' @param network_model `list`. The trained network_model.
-    #' @param threshold `number`. A single value between `0` & `1` that is the threshold for the predicted probabilities.
-    #' @return A `data.frame` with three columns: 1) `probs`: The Probability value of each of the labels, and is the same length as `y_test`; 2) `truth`: The true labels, the exact same vector as `y_test`; 3) `class`: The class of values, defined at a given cutoff value.
-    #' @author chrimaho
-    #' @examples
-    #' # Works
-    #' get_Prediction(
-    #'     x_test=NA,
-    #'     y_test=NA
-    #' )
-    
-    # Packages
-    require(assertthat)
-    require(dplyr)
-    require(magrittr)
-    
-    # Validations
-    assert_that(x_test %>% is.array, msg="'x_test' must be type 'array'.")
-    assert_that(y_test %>% is.array, msg="'y_test' must be type 'array'.")
-    assert_that(threshold %>% is.number, msg="'threshold' must be type 'number'.")
-    assert_that(between(threshold, 0, 1), msg="'threshold must be between '0' and '1'.")
-    assert_that(network_model %>% is.list, msg="'network_model' must be type 'list'.")
-    assert_that(network_model %>% names %>% extract(1) == "input", msg="The first layer of 'network_model' must be 'input'.")
-    assert_that(network_model %>% names %>% rev %>% extract(1) == "output", msg="The last layer of 'network_model' must be 'output'.")
-    for (name in network_model %>% names) {
-        if (!name %in% c("input","output")) {
-            assert_that(name %>% as.numeric %>% is.integer, msg="Each hidden layer in 'network_model' must be an integer value.")
-        }
-    }
-    
-    # Create prediction
-    predic <- set_ForwardProp(
-        network_model=network_model, 
-        data_in=x_test, 
-        activation_hidden="relu", 
-        activation_final="sigmoid"
-    )
-    
-    # Extract probabilities
-    probas <- predic[["output"]][["acti"]]
-    
-    # Define results
-    result <- data.frame(
-        probs=probas,
-        truth=y_test
-    )
-    
-    # Add class
-    result %<>% 
-        mutate(class=ifelse(probas>threshold, 1, 0))
-    
-    # Return
-    return(result)
-}
-```
-
-```{r, fig.width=6, fig.height=5}
-plt_ConfusionMatrix <- function(confusion_matrix) {
-    #' @title Add function title
-    #' @description Add function description.
-    #' @note Add a note for the developer.
-    #' @param confusion_matrix `caret::confusionMatrix()`. The confusion matrix, as produced by `cared::confusionMatrix()`.
-    #' @return A ggplot object.
-    #' @seealso https://stackoverflow.com/questions/37897252/plot-confusion-matrix-in-r-using-ggplot
-    #' @author chrimaho
-    #' @examples
-    #' # Works
-    #' plt_ConfusionMatrix(
-    #'     confusion_matrix=NA,
-    #'     title=NA
-    #' )
-    
-    # Packages
-    require(assertthat)
-    require(dplyr)
-    
-    # Validations
-    assert_that((confusion_matrix %>% class) == "confusionMatrix", msg="'confusion_matrix' must be class 'confusionMatrix()', as generated by the 'caret::confusionMatrix()' function.")
-    
-    # Do work
-    plot <- confusion_matrix %>% 
-        extract("table") %>% 
-        as.data.frame() %>% 
-        rename_all(str_remove_all, "table.") %>% 
-        rename("Prediction"=1, "Reference"=2) %>% 
-        mutate(goodbad = ifelse(Prediction == Reference, "good", "bad")) %>%
-        group_by(Reference) %>% 
-        mutate(prop = Freq/sum(Freq)) %>% 
-        ungroup() %>% 
-        {
-            ggplot(., aes(x = Reference, y = Prediction, fill = goodbad, alpha = prop)) +
-                geom_tile() +
-                geom_text(aes(label = Freq), vjust = .5, fontface  = "bold", alpha = 1) +
-                scale_fill_manual(values = c(good = "green", bad = "red")) +
-                scale_x_discrete(limits=levels(.$Reference), position="top") +
-                scale_y_discrete(limits=rev(levels(.$Prediction))) +
-                labs(
-                    title="Confusion Matrix",
-                    subtitle=paste0("For: '", .$Prediction[1], "' vs '", .$Prediction[2], "'")
-                )
-        }
-    
-    # Return
-    return(plot)
-}
-```
 
 ```{r, fig.width=6, fig.height=5}
 # library(ROCR)
