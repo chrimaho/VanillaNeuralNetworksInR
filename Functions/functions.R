@@ -583,7 +583,7 @@ set_InitialiseLayer <- function(network_model, layer_index, initialisation_algor
     
     # Get number of nodes
     if (layer_index == 1) {
-        nodes_in <- 0 #The first layer is the 'input' layer; therefore, there are 0 nodes feeding in to it.
+        nodes_in <- 0 #First layer is 'input'; therefore, there are 0 nodes feeding in to it.
     } else {
         nodes_in <- network_model %>% extract2(layer_prev) %>% extract2("nodz")
     }
@@ -609,7 +609,8 @@ set_InitialiseLayer <- function(network_model, layer_index, initialisation_algor
         if (is.na(initialisation_algorithm)) {
             w_matrix <- w_matrix
         } else {
-            w_matrix <- w_matrix * get(algorithm)(nodes_in=nodes_in, nodes_out=nodes_out, order=initialisation_order)
+            w_matrix <- w_matrix * 
+                get(algorithm)(nodes_in=nodes_in, nodes_out=nodes_out, order=initialisation_order)
         }
     }
     
@@ -665,7 +666,10 @@ set_InitialiseModel <- function(network_model, initialisation_algorithm="xavier"
     
     # Redefine 'initialisation_order'
     if (initialisation_order == "layers") {
-        initialisation_order <- get_CountOfElementsWithCondition(names(network_model), function(x){IsWhole(as.numeric(x))})
+        initialisation_order <- get_CountOfElementsWithCondition(
+            names(network_model), 
+            function(x){is.integer(as.numeric(x))}
+        )
     }
     
     # Initialise each layer

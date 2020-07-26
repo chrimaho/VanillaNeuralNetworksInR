@@ -519,19 +519,19 @@ Some quick notes on what the Network will _actually_ be:
 * Each of the layers in between will be the `hidden` layers, and the names for these layers are simply named with numbers.
 * Each element of each layer will all be labelled the same, defined as follows:
 
-    * `nodz`: Number of nodes in this layer.
-    * `inpt`: Input matrix. Aka `A_prev`. This is a duplicate of the activation of the previous layer, so for large networks this needs to be taken in to consideration.
-    * `wgts`: Weights matrix. Aka `W`.
-    * `bias`: Bias vector. Aka `b`.
-    * `linr`: Linear matrix. Aka `Z`. This is the result of the linear algebra between `inpt`, `wgts` and `bias`.
-    * `acti`: Activation matrix. Aka `A`. The result of applying an activation function to the `linr` matrix.
-    * `acti_func`: The activation function used.
-    * `cost`: The overall cost of the model. This is a single value (the overall cost of the model), but is copied to each layer of the model.
-    * `back_cost`: Gradient of the cost vector. Aka `dA_cost`.
-    * `back_acti`: Gradient of the Activation matrix. Aka `dA`. The result of differentiation after having applied back propagation. With a given cost function.
-    * `back_linr`: Gradient of the Linear algebra matrix. Aka `dZ`. The result of backwards linear differentiation back propagation.
-    * `back_wgts`: Gradient of the Weights matrix. Aka `dW`. Also the result of back-prop.
-    * `back_bias`: Gradient of the Bias vector. Aka `db`. Also the result of back-prop.
+    * `nodz` : Number of nodes in this layer. 
+    * `inpt` : Input matrix. Aka `A_prev`. This is a duplicate of the activation of the previous layer, so for large networks this needs to be taken in to consideration. 
+    * `wgts` : Weights matrix. Aka `W`. 
+    * `bias` : Bias vector. Aka `b`. 
+    * `linr` : Linear matrix. Aka `Z`. This is the result of the linear algebra between `inpt`, `wgts` and `bias`. 
+    * `acti` : Activation matrix. Aka `A`. The result of applying an activation function to the `linr` matrix. 
+    * `acti_func` : The activation function used. 
+    * `cost` : The overall cost of the model. This is a single value (the overall cost of the model), but is copied to each layer of the model. 
+    * `back_cost` : Gradient of the cost vector. Aka `dA_cost`. 
+    * `back_acti` : Gradient of the Activation matrix. Aka `dA`. The result of differentiation after having applied back propagation. With a given cost function. 
+    * `back_linr` : Gradient of the Linear algebra matrix. Aka `dZ`. The result of backwards linear differentiation back propagation. 
+    * `back_wgts` : Gradient of the Weights matrix. Aka `dW`. Also the result of back-prop. 
+    * `back_bias` : Gradient of the Bias vector. Aka `db`. Also the result of back-prop. 
 
 ### Set the function
 
@@ -682,10 +682,47 @@ let_InitialiseHe <- function(nodes_in, nodes_out, order=2) {
 
 ## Layer Initialisation
 
+The next step is to construct a function that will initialise all the relevant aspects of an individual layer. This step is important because it is where the weight matrices are created, and these must be constructed in a certain manner so as to ensure that the dimensions allow successful forward propagation.
 
+The steps for the layer construction are as follows:
+
+1. Determine the layer names of current layer (`layer`) and of the previous layer (`layer_prev`).
+    * Used to access the relevant configurations from the `network_model` list.
+1. Determine the number of nodes feeding in to this layer (`nodes_in`), and the number of nodes feeding out of the current layer (`nodes_out`).
+    * Used for parse'ing in to the Initialisation Algorithms.
+1. Create the Weight matrix.
+    * The dimensions of which are as follows:
+        * Number of Rows is the number of nodes in the previous layer.
+        * Number of Columns is the number of nodes in the current layer.
+    * Each element is created using the `rnorm()` function, which generates a random number on the normal curve, with $\mu=0$ and $\sigma=1$.
+1. Determine the Initialisation Algorithm to be used.
+    * The value value parsed in to this function is a lower-case word associated with the relevant algorithm.
+    * It is coerced to a Title capitalisation, and then given the prefix `let_Initialisation`.
+    * The value is then parsed in to the `get()` function, which then calls the function, and executes the parameters parsed to it.
+    * This is a programmatic way to flexibly call different algorithms, based on values parsed to the function.
+1. Scale the Weight matrix.
+    * By multiplying each element by the Initialisation Algorithm.
+1. Create the Bias matrix.
+    * The dimensions of which are as follows:
+        * The number of rows is the number of nodes in the current layer.
+        * There is only one column.
+    * Every single element has value `0`.
+1. Apply the Weight and Bias matrix back on to the `network_model`.
+1. Return the updated `network_model` object.
+
+In order to achieve this, the function arguments used are for the function include:
+
+1. The `network_model` itself.
+1. The `layer_index` of the layer (where $1$ is the `input` layer, and each increasing number is each subsequent layer).
+1. The `initialisation_algorithm`, which is either the value `NA`, or the value `xavier` or `he` which is the value of the relevant algorithm.
+1. The `initialisation_order`, which is an integer value to be used as the numerator in the relevant algorithm.
 
 ```{r Layer Initialisation, eval=TRUE, echo=TRUE}
-set_InitialiseLayer <- function(network_model, layer_index, initialisation_algorithm=NA, initialisation_order=6) {
+set_InitialiseLayer <- function(network_model, 
+                                layer_index, 
+                                initialisation_algorithm=NA, 
+                                initialisation_order=6
+                                ) {
     
     # Get layer names
     layer_prev <- names(network_model)[layer_index-1]
@@ -693,7 +730,7 @@ set_InitialiseLayer <- function(network_model, layer_index, initialisation_algor
     
     # Get number of nodes
     if (layer_index == 1) {
-        nodes_in <- 0 #The first layer is the 'input' layer; therefore, there are 0 nodes feeding in to it.
+        nodes_in <- 0 #First layer is 'input'; therefore, there are 0 nodes feeding in to it.
     } else {
         nodes_in <- network_model %>% extract2(layer_prev) %>% extract2("nodz")
     }
@@ -719,7 +756,12 @@ set_InitialiseLayer <- function(network_model, layer_index, initialisation_algor
         if (is.na(initialisation_algorithm)) {
             w_matrix <- w_matrix
         } else {
-            w_matrix <- w_matrix * get(algorithm)(nodes_in=nodes_in, nodes_out=nodes_out, order=initialisation_order)
+            w_matrix <- w_matrix * 
+                get(algorithm)(
+                    nodes_in=nodes_in, 
+                    nodes_out=nodes_out, 
+                    order=initialisation_order
+                )
         }
     }
     
@@ -741,44 +783,31 @@ set_InitialiseLayer <- function(network_model, layer_index, initialisation_algor
 
 ## Model Initialisation
 
+The purpose of the `set_InitialiseModel()` function is to loop through each layer in the `network_model` object, to initialise them in accordance with the parameters set within the model itself. This function will take the number of nodes (set by the `set_InstantiateNetwork()` function).
+
+The function will take only three input parameters:
+
+1. The `network_model`:
+    * The Network, as instantiated by the `set_InstantiateNetwork()` function.
+1. The `initialisation_algorithm`:
+    * The algorithm to be used for the network initialisation.
+    * This should be the values `NA`, `xavier`, or `he`.
+1. The `initialisation_order`:
+    * The order value to be used for the numerator of the equation.
+    * This could be a numeric value, or the string `layers` which signifies that the order should be the number of hidden layers in the network.
+
 ```{r Model Initialisation, eval=TRUE, echo=TRUE, warning=FALSE}
-set_InitialiseModel <- function(network_model, initialisation_algorithm="xavier", initialisation_order="layers") {
-    #' @title Initialise Model
-    #' @description Initialise the model with all the necessary weights and biases.
-    #' @note Add a note for the developer.
-    #' @param network_model `list`. The model to be initialised.
-    #' @param initialisation_algorithm `string`. The initialisation algorithm to use for the weights. If `NA`, then will use the values from an `rnorm()` function. Default value `"xavier"`.
-    #' @param initialisation_order `integer` or `string`. The order of magnitude for the initialisation algorithm. Should be a number (ideally less than `10`), or the word `layers`, which will automatically calculate the order based in the number of hidden layers in the model. Default value `"layers"`.
-    #' @return The `network_model`, with all layers having been initialised.
-    #' @author chrimaho
-    #' @examples
-    #' # Works
-    #' set_InitialiseModel(
-    #'     network_model,
-    #'     initialisation_algorithm="xavier",
-    #'     initialisation_order="layers"
-    #' )
-    
-    # Packages
-    require(assertthat)
-    require(dplyr)
-    
-    # Validations
-    assert_that(network_model %>% is.list, msg="'network_model' must be type 'list'.")
-    assert_that(or(is.string(initialisation_algorithm), is.na(initialisation_algorithm)), msg="'initialisation_algorithm' must be type 'string' or value 'NA'.")
-    assert_that(initialisation_algorithm %in% c("xavier","he",NA), msg="'initialisation_algorithm' must be one of 'xavier', 'he', or 'NA'.")
-    assert_that(or(is.integer(initialisation_order), is.string(initialisation_order)), msg="'initialisation_order' must be type 'integer' or 'string'.")
-    assert_that(network_model %>% names %>% extract(1) == "input", msg="The first layer of 'network_model' must be 'input'.")
-    assert_that(network_model %>% names %>% rev %>% extract(1) == "output", msg="The last layer of 'network_model' must be 'output'.")
-    for (name in network_model %>% names) {
-        if (!name %in% c("input","output")) {
-            assert_that(name %>% as.numeric %>% is.integer, msg="Each hidden layer in 'network_model' must be an integer value.")
-        }
-    }
+set_InitialiseModel <- function(network_model, 
+                                initialisation_algorithm="xavier", 
+                                initialisation_order="layers"
+                                ) {
     
     # Redefine 'initialisation_order'
     if (initialisation_order == "layers") {
-        initialisation_order <- get_CountOfElementsWithCondition(names(network_model), function(x){IsWhole(as.numeric(x))})
+        initialisation_order <- get_CountOfElementsWithCondition(
+            names(network_model), 
+            function(x){is.integer(as.numeric(x))}
+        )
     }
     
     # Initialise each layer
@@ -796,184 +825,196 @@ set_InitialiseModel <- function(network_model, initialisation_algorithm="xavier"
 }
 ```
 
-For this, the custom function `get_CountOfElementsWithCondition()` is used. The source code for the function can be found [here]().
+Notice, this function uses the user-defined function `get_CountOfElementsWithCondition()`. This function allows for the counting of the number of hidden layers in the model. The source code for the function can be found [here](https://github.com/chrimaho/VanillaNeuralNetworksInR/blob/master/Functions/functions.R).
 
-## RUN
+## Initialise the Network
+
+The below code chunk initialises the network using the function defined above. The method utilised is `%<>%`, which is defined in the `magrittr` package, which states that it is used to update a value on the left-hand side by first piping it into the first argument position on the right-hand side, and then assigning the result back to the object on the left hand side.
 
 ```{r Run the Setup, eval=TRUE, echo=TRUE}
-network_model <- set_InitialiseModel(network_model)
+network_model %<>% set_InitialiseModel()
 ```
 
 # Forward Propogation
 
 ## The Theory
 
-Check: [Matrix Manipulation](http://matrixmultiplication.xyz/)
+There is a very good website which outlines what actually happens during a matrix manipulation: [Matrix Manipulation](http://matrixmultiplication.xyz/).
+
+The theory for the forward propagation method is as follows:
+
+1. Apply matrix manipulation
+    1. The first matrix is the activation matrix from the previous layer.
+    1. The second matrix is the weight matrix for the current layer.
+    1. The third matrix is the (first) linear activation matrix for the current layer.
+1. Apply bias matrix
+    1. The first matrix is the (first) linear activation of the current layer.
+    1. The second matrix is the bias matrix for the current layer.
+    1. The third matrix is the (second) linear activation matrix for the current layer.
+1. Apply activation algorithm
+    1. The first matrix is the (second) linear activation matrix for the current layer.
+    1. The activation function is determined by the user during the time of the function being run. Can be the `relu` activation, `sigmoid` activation, or any of the other activation functions.
+    1. The third matrix is the  activation matrix for the current layer.
+
+### Step One
+
+To illustrate, the following matrices shows the first step of the forward propagation, using fictitious numbers.
 
 $$
-
-Multiply\ Matrices:
-
 \begin{bmatrix}
-1 &  9 & 17\\
-2 & 10 & 18\\
-3 & 11 & 19\\
-4 & 12 & 20\\
-5 & 13 & 21\\
-6 & 14 & 22\\
-7 & 15 & 23\\
-8 & 16 & 24\\
+ 1 &  2 &  3 \\
+ 4 &  5 &  6 \\
+ 7 &  8 &  9 \\
+10 & 11 & 12 \\
+13 & 14 & 15 \\
+16 & 17 & 18 \\
+19 & 20 & 21 \\
+22 & 23 & 24 \\
+\end{bmatrix}\times\begin{bmatrix}
+1  & 2  & 3  & 4  &  5 \\
+6  & 7  & 8  & 9  & 10 \\
+11 & 12 & 13 & 14 & 15 \\
+\end{bmatrix}=\begin{bmatrix}
+ 46 &  52 &  58 &  64 &  70 \\
+100 & 115 & 130 & 145 & 160 \\
+154 & 178 & 202 & 226 & 250 \\
+208 & 241 & 274 & 307 & 340 \\
+262 & 304 & 346 & 388 & 430 \\
+316 & 367 & 418 & 469 & 520 \\
+370 & 430 & 490 & 550 & 610 \\
+424 & 493 & 562 & 631 & 700 \\
 \end{bmatrix}
-
-\times
-
-\begin{bmatrix}
-1 & 4 & 7 & 10 & 13\\
-2 & 5 & 8 & 11 & 14\\
-3 & 6 & 9 & 12 & 15\\
-\end{bmatrix}
-
-=
-
-\begin{bmatrix}
- 70 & 151 & 232 & 313 & 394\\
- 76 & 166 & 256 & 346 & 436\\
- 82 & 181 & 280 & 379 & 478\\
- 88 & 196 & 304 & 412 & 520\\
- 94 & 211 & 328 & 445 & 562\\
-100 & 226 & 352 & 478 & 604\\
-106 & 241 & 376 & 511 & 646\\
-112 & 256 & 400 & 544 & 688\\
-\end{bmatrix}
-
-\\
-
-Add\ Biases:
-
-\begin{bmatrix}
- 70 & 151 & 232 & 313 & 394\\
- 76 & 166 & 256 & 346 & 436\\
- 82 & 181 & 280 & 379 & 478\\
- 88 & 196 & 304 & 412 & 520\\
- 94 & 211 & 328 & 445 & 562\\
-100 & 226 & 352 & 478 & 604\\
-106 & 241 & 376 & 511 & 646\\
-112 & 256 & 400 & 544 & 688\\
-\end{bmatrix}
-
-+
-
-\begin{bmatrix}
-1\\
-2\\
-3\\
-4\\
-5\\
-6\\
-7\\
-8\\
-\end{bmatrix}
-
-=
-
-\begin{bmatrix}
- 71 & 152 & 233 & 314 & 395\\
- 78 & 168 & 258 & 348 & 438\\
- 85 & 184 & 283 & 382 & 481\\
- 92 & 200 & 308 & 416 & 524\\
- 99 & 216 & 333 & 450 & 567\\
-106 & 232 & 358 & 484 & 610\\
-113 & 248 & 383 & 518 & 653\\
-120 & 264 & 408 & 552 & 696\\
-\end{bmatrix}
-
-\\
-
-Apply\ Activation:
-
-\begin{bmatrix}
- 71 & 152 & 233 & 314 & 395\\
- 78 & 168 & 258 & 348 & 438\\
- 85 & 184 & 283 & 382 & 481\\
- 92 & 200 & 308 & 416 & 524\\
- 99 & 216 & 333 & 450 & 567\\
-106 & 232 & 358 & 484 & 610\\
-113 & 248 & 383 & 518 & 653\\
-120 & 264 & 408 & 552 & 696\\
-\end{bmatrix}
-
-\times
-
-\delta
-
-=
-
-\begin{bmatrix}
- 50.41 & 231.04 &  542.89 &  985.96 & 1560.25\\
- 60.84 & 282.24 &  665.64 & 1211.04 & 1918.44\\
- 72.25 & 338.56 &  800.89 & 1459.24 & 2313.61\\
- 84.64 & 400.00 &  948.64 & 1730.56 & 2745.76\\
- 98.01 & 466.56 & 1108.89 & 2025.00 & 3214.89\\
-112.36 & 538.24 & 1281.64 & 2342.56 & 3721.00\\
-127.69 & 615.04 & 1466.89 & 2683.24 & 4264.09\\
-144.00 & 696.96 & 1664.64 & 3047.04 & 4844.16\\
-\end{bmatrix}
-
 $$
 
-```{r}
-mat_a <- matrix(1:24, 8, 3, byrow=TRUE)
-mat_a
+The below code shows how this process is implemented programatically.
 
-mat_b <- matrix(1:15, 3, 5, byrow=TRUE)
-mat_b
+```{r, eval=TRUE, echo=TRUE}
+# Declare First matrix
+mat_a <- matrix(
+    data=1:24, 
+    nrow=8, 
+    ncol=3, 
+    byrow=TRUE
+)
 
+# Declare Weight matrix
+mat_b <- matrix(
+    data=1:15, 
+    nrow=3, 
+    ncol=5, 
+    byrow=TRUE
+)
+
+# Apply matrix manipulation
 mat_c <- mat_a %*% mat_b
+```
+```{r, eval=TRUE, echo=FALSE}
+writeLines("mat_a:")
+mat_a
+writeLines("\nmat_b:")
+mat_b
+writeLines("\nmat_c:")
 mat_c
+```
 
+### Step Two
+
+The next diagram shows how the bias matrix is applied. As shown, each element in the bias matrix is applied horizontally to each element of the initial matrix. This diagram shows how it works.
+
+$$
+\begin{bmatrix}
+ 46 &  52 &  58 &  64 &  70 \\
+100 & 115 & 130 & 145 & 160 \\
+154 & 178 & 202 & 226 & 250 \\
+208 & 241 & 274 & 307 & 340 \\
+262 & 304 & 346 & 388 & 430 \\
+316 & 367 & 418 & 469 & 520 \\
+370 & 430 & 490 & 550 & 610 \\
+424 & 493 & 562 & 631 & 700 \\
+\end{bmatrix}+\begin{bmatrix}
+1 \\
+2 \\
+3 \\
+4 \\
+5 \\
+6 \\
+7 \\
+8 \\
+\end{bmatrix}=\begin{bmatrix}
+ 47 &  53 &  59 &  65 &  71 \\
+102 & 117 & 132 & 147 & 162 \\
+157 & 181 & 205 & 229 & 253 \\
+212 & 245 & 278 & 311 & 344 \\
+267 & 309 & 351 & 393 & 435 \\
+322 & 373 & 424 & 475 & 526 \\
+377 & 437 & 497 & 557 & 617 \\
+432 & 501 & 570 & 639 & 708 \\
+\end{bmatrix}
+$$
+
+The below code shows how this process is implemented programatically.
+
+```{r, eval=TRUE, echo=TRUE}
+# Declare Bias matrix
 mat_d <- matrix(1:8, 8, 1)
-mat_d
 
+# Apply Bias matrix
 mat_e <- sweep(mat_c, 1, mat_d, "+")
+```
+```{r, eval=TRUE, echo=FALSE}
+writeLines("mat_c:")
+mat_c
+writeLines("\nmat_d:")
+mat_d
+writeLines("\nmat_e:")
 mat_e
+```
 
+### Step Three
+
+The activation function is one which is defined at the time of running the function. The algorithm is applied to each element of the initial matrix. In this instance, a simple multiplication of the initial matrix is matrix.
+
+$$
+\begin{bmatrix}
+ 47 &  53 &  59 &  65 &  71 \\
+102 & 117 & 132 & 147 & 162 \\
+157 & 181 & 205 & 229 & 253 \\
+212 & 245 & 278 & 311 & 344 \\
+267 & 309 & 351 & 393 & 435 \\
+322 & 373 & 424 & 475 & 526 \\
+377 & 437 & 497 & 557 & 617 \\
+432 & 501 & 570 & 639 & 708 \\
+\end{bmatrix}\times\delta=\begin{bmatrix}
+  22.09 &   28.09 &   34.81 &   42.25 &   50.41 \\
+ 104.04 &  136.89 &  174.24 &  216.09 &  262.44 \\
+ 246.49 &  327.61 &  420.25 &  524.41 &  640.09 \\
+ 449.44 &  600.25 &  772.84 &  967.21 & 1183.36 \\
+ 712.89 &  954.81 & 1232.01 & 1544.49 & 1892.25 \\
+1036.84 & 1391.29 & 1797.76 & 2256.25 & 2766.76 \\
+1421.29 & 1909.69 & 2470.09 & 3102.49 & 3806.89 \\
+1866.24 & 2510.01 & 3249.00 & 4083.21 & 5012.64 \\
+\end{bmatrix}
+$$
+
+The below code shows how this process is implemented programatically.
+
+```{r, eval=TRUE, echo=TRUE}
+# Apply Activation function
 mat_f <- mat_e*(0.01*mat_e)
+```
+```{r, eval=TRUE, echo=FALSE}
+writeLines("mat_e:")
+mat_e
+writeLines("\nmat_f:")
 mat_f
-
-rm(mat_a, mat_b, mat_c, mat_d, mat_e, mat_f)
 ```
 
 ## Linear Component
 
+When combined together, the linear algebraic function is implemented in just three lines of code, as shown in the below code chunk in the `set_LinearForward()` function.
+
 ```{r}
 set_LinearForward <- function(inpt, wgts, bias) {
-    #' @title Linear Forward Algebra
-    #' @description Perform linear algebra on a layer during forward propagation.
-    #' @note Just like finding a gradient (`y=mx+b`), the output of this function takes `inpt * wgts + bias`.
-    #' @note To perform the matrix addition part, the `base::sweep()` function is used, which sweeps a vector linearly across a matrix. In this case we are using the second dimension for this, meaning to say that the bias is swept across each row of the `linr` matrix. And as each row is each node, then this is how the bias is being added.
-    #' @param inpt `matrix`. The input matrix for this layer. This is also the 'activation' from the previous layer. First dimension: Number of nodes in the previous layer. Second dimension: number of images being parsed in to the model.
-    #' @param wgts `matrix`. The weights matrix for this layer. The length of the first dimension of `wgts` MUST equal the length of the second dimension of the `inpt` matrix. First dimension: number of images being parsed in to the model. Second dimension: number of nodes in this layer. 
-    #' @param bias `vector` or single-column `matrix`. The bias for this layer. The length of this element MUST be equal to the second dimension of the `wgts` matrix. In other words, the length of the `bias` element is the number of nodes in this layer.
-    #' @return A `matrix` after performing linear algebra.
-    #' @author chrimaho
-    #' @examples
-    #' # Works
-    #' set_LinearForward(
-    #'     inpt,
-    #'     wgts,
-    #'     bias
-    #' )
-    
-    # Packages
-    require(assertthat)
-    require(dplyr)
-    
-    # Validations
-    assert_that(inpt %>% is.matrix, msg="'inpt' must be type 'matrix'.")
-    assert_that(wgts %>% is.matrix, msg="'wgts' must be type 'matrix'.")
-    assert_that(bias %>% is.matrix, msg="'bias' must be type 'matrix'.")
-    assert_that(wgts %>% dim %>% extract(1) == inpt %>% dim %>% extract(2), msg="The length of the first dimension of 'wgts' MUST equal the length of the second dimension of 'inpt'.")
-    assert_that(bias %>% length == wgts %>% dim %>% extract(2), msg="The length of `bias` MUST equal the length of the second dimension of `wgts`.")
     
     # Perform matrix multiplication
     linr <- inpt %*% wgts
