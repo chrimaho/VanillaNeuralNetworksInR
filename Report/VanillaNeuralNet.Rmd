@@ -48,13 +48,36 @@ output:
     display: table;
     clear: both;
 }
-h1, .h1 {
+.title, .toc-ignore {
+    font-weight: bold;
+    font-size: 120%;
+    <!-- font-size: 100px; -->
+}
+.subtitle {
+    font-style: italic;
+    font-size: 20px;
+    margin-left: 0px;
+}
+.header-section-number {
+    margin-top: 40px;
+    <!-- font-weight: bold; -->
+    <!-- font-size: 40px; -->
+}
+h1 {
     margin-top: 40px;
     font-weight: bold;
+    font-size: 30px;
 }
-h2, .h2 {
+h2 {
     margin-top: 40px;
     margin-left: 40px;
+    font-size: 25px;
+}
+h3 {
+    margin-top: 20;
+    margin-left: 80px;
+    font-size: 20px;
+    font-style: italic;
 }
 </style>
 
@@ -510,6 +533,8 @@ Some quick notes on what the Network will _actually_ be:
     * `back_wgts`: Gradient of the Weights matrix. Aka `dW`. Also the result of back-prop.
     * `back_bias`: Gradient of the Bias vector. Aka `db`. Also the result of back-prop.
 
+### Set the function
+
 For the below code chunk, the function `set_InstantiateNetwork()` is defined. It only has three input arguments, which specify the number of nodes to be used in each layer. Based on this information, the model will be instantiated and returned, ready for initialisation, in the next step.
 
 ```{r Instantiate Network Definition, eval=FALSE, echo=TRUE}
@@ -560,9 +585,11 @@ set_InstantiateNetwork <- function(input=50, hidden=c(30,20,10), output=1) {
 }
 ```
 
+### Create the Network
+
 The below code chunk instantiates the network. The model will be set up with the following number of nodes in each layer:
 
-* The `input` layer will have 3072 nodes, the same number calculated above.
+* The `input` layer will have `3072` nodes, the same number calculated above.
 * Each `hidden` layer will have a decreasing number of nodes, from `100` down to `20` notes.
 * The `output` layer will have 1 node, because this one node will be a floating point number betwee `0` and `1`, which will be used to predict whether the relevant image is a `car` or `not`.
 
@@ -574,7 +601,11 @@ network_model <- set_InstantiateNetwork(
 )
 ```
 
-There is a very good website available which allows Neural Networks to be visualised: [http://alexlenail.me/NN-SVG/AlexNet.html](http://alexlenail.me/NN-SVG/AlexNet.html).
+### Visualise the Network
+
+There is a very good website available which allows Neural Networks to be visualised: [http://alexlenail.me/NN-SVG/AlexNet.html](http://alexlenail.me/NN-SVG/AlexNet.html). The below image is a representation of the network that has just been created.
+
+![*Figure 1: Network Architecture*](./Images/Network Architecture.png)
 
 # Initialise the Network {#initialisenetwork}
 
@@ -589,21 +620,42 @@ There are four steps to initialising the network:
 
 At it's core, weight initialisation is simply generating a random normal number (with $\mu=0$ and $\sigma=1$). However, by only using this randomly generated number, the model gradients are found to be exploding or vanishing when attempting to train deeper neural networks. Therefore, these weights need to be scaled after they are initialised, in order to be robust enough to continue to be trained at deeper layers.
 
-There are many algorithms that can be used for weight initialisation. Two of the more common ones are the Xavier algorithm, and the He algorithm. 
+There are many algorithms that can be used for weight initialisation. Two of the more common ones are the Xavier algorithm, and the He algorithm. Some good resources for understanding the details behind these algorithms include:
 
-```{r Weight Initialisation, eval=TRUE, echo=TRUE}
+* [Weight Initialization in Neural Networks](https://towardsdatascience.com/weight-initialization-in-neural-networks-a-journey-from-the-basics-to-kaiming-954fb9b47c79)
+* [Understanding the difficulty of training deep feedforward neural networks](http://proceedings.mlr.press/v9/glorot10a/glorot10a.pdf)
+* [Surpassing Human-Level Performance on ImageNet Classification](https://arxiv.org/pdf/1502.01852.pdf)
+
+### Xavier Algorithm
+
+The equation for the Xavier initialisation is:
+
+$$
+\pm\sqrt{\frac{6}{n_i+n_{i+1}}}
+$$
+Where:
+
+* $n_i$ is the number of nodes coming in to this layer. Also known as "fan-in".
+* $n_{i+1}$ is the number of nodes going out of this layer. Also known as "fan-out".
+
+### He Algorithm
+
+The equation for the He initialisation is:
+
+$$
+\pm\sqrt{\frac{2}{n_i}}
+$$
+
+Where: 
+
+* $n_i$ is the number of nodes coming in to this layer.
+
+### The Functions
+
+For programmatic purposes, these functions are written with the `order` value as part of the function arguments. This means that the order of magnitude of the equation can be altered at a later stage and used as a hyperparameter.
+
+```{r Xavier Initialisation, eval=TRUE, echo=TRUE}
 let_InitialiseXavier <- function(nodes_in, nodes_out, order=6) {
-    #' @seealso https://towardsdatascience.com/weight-initialization-in-neural-networks-a-journey-from-the-basics-to-kaiming-954fb9b47c79
-    #' @seealso http://proceedings.mlr.press/v9/glorot10a/glorot10a.pdf
-    
-    # Packages
-    require(assertthat)
-    require(dplyr)
-    
-    # Validations
-    assert_that(nodes_in %>% is.integer, msg="'nodes_in' must be type 'integer'.")
-    assert_that(nodes_out %>% is.integer, msg="'nodes_out' must be type 'integer'.")
-    assert_that(order %>% is.integer, msg="'nodes_out' must be type 'integer'.")
     
     # Do work
     numer <- sqrt(order)
@@ -613,19 +665,10 @@ let_InitialiseXavier <- function(nodes_in, nodes_out, order=6) {
     # Return
     return(output)
 }
+```
 
-
+```{r He Initialisation, eval=TRUE, echo=TRUE}
 let_InitialiseHe <- function(nodes_in, nodes_out, order=2) {
-    #' @seealso https://towardsdatascience.com/weight-initialization-in-neural-networks-a-journey-from-the-basics-to-kaiming-954fb9b47c79
-    #' @seealso http://proceedings.mlr.press/v9/glorot10a/glorot10a.pdf
-    
-    # Packages
-    require(assertthat)
-    require(dplyr)
-    
-    # Validations
-    assert_that(nodes_in %>% is.integer, msg="'nodes_in' must be type 'integer'.")
-    assert_that(order %>% is.integer, msg="'order' must be type 'integer'.")
     
     # Do work
     numer <- order
@@ -639,36 +682,10 @@ let_InitialiseHe <- function(nodes_in, nodes_out, order=2) {
 
 ## Layer Initialisation
 
+
+
 ```{r Layer Initialisation, eval=TRUE, echo=TRUE}
 set_InitialiseLayer <- function(network_model, layer_index, initialisation_algorithm=NA, initialisation_order=6) {
-    #' @title Initialise layer within network.
-    #' @description Set the weights and biases of a given layer.
-    #' @note If `initialisation_algorithm` is `NA`, then the weights initialisation is only a random normal number, the result of running `rnorm()` as follows: `matrix(data=rnorm(nodes_in * nodes_out), nrow=nodes_in, ncol=nodes_out)`
-    #' @param network_model `list`. The model to be updated. The result of having run the `set_InstantiateNetwork()` function.
-    #' @param layer_index `integer`. The index of the layer to be initialised.
-    #' @param initialisation_algorithm `string`. The algorithm to be used for initialisation (eg. `xavier` or `he`). Default value `NA`.
-    #' @param initialisation_order `integer`. The order of magnitude for the initialisation (can be either an integer, or set to the number of layers defined). Default value `6`.
-    #' @return The `network_model`, with the relevant layer having been initialised.
-    #' @author chrimaho
-    #' @examples
-    #' # Works
-    #' set_InitialiseLayer(
-    #'     network_model=network_model,
-    #'     layer_index=1,
-    #'     initialisation_algorithm="xavier",
-    #'     initialisation_order="6"
-    #' )
-    
-    # Packages
-    require(assertthat)
-    require(stringr)
-    require(dplyr)
-    
-    # Validations
-    assert_that(network_model %>% is.list, msg="'network_model' must be type 'list'.")
-    assert_that(layer_index %>% is.integer, msg="'layer_index' must be type 'integer'.")
-    assert_that(initialisation_algorithm %in% c("xavier", "he", NA), msg="'initialisation_algorithm' must be one of 'xavier', 'he', or 'NA'.")
-    assert_that(initialisation_order %>% is.integer, msg="'layer_index' must be type 'integer'.")
     
     # Get layer names
     layer_prev <- names(network_model)[layer_index-1]
