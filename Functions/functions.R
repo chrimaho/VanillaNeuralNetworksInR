@@ -687,6 +687,56 @@ set_InitialiseModel <- function(network_model, initialisation_algorithm="xavier"
 }
 
 
+get_ModelParametersCount <- function(network_model) {
+    #' @title Get the Count of Paramerters for the Network
+    #' @description Add function description.
+    #' @note Add a note for the developer.
+    #' @param network_model `list`. The network to be checked.
+    #' @return The number of parameters for a given network.
+    #' @author chrimaho
+    #' @examples
+    #' # Works
+    #' get_ModelParametersCount(
+    #'     network_model=NA,
+    #'     NA=NA
+    #' )
+    
+    # Packages
+    require(assertthat)
+    require(dplyr)
+    require(roperators)
+    
+    # Validations
+    assert_that(network_model %>% is.list, msg="'network_model' must be type 'list'.")
+    assert_that(network_model %>% names %>% extract(1) == "input", msg="The first layer of 'network_model' must be 'input'.")
+    assert_that(network_model %>% names %>% rev %>% extract(1) == "output", msg="The last layer of 'network_model' must be 'output'.")
+    for (name in network_model %>% names) {
+        if (!name %in% c("input","output")) {
+            assert_that(name %>% as.numeric %>% is.integer, msg="Each hidden layer in 'network_model' must be an integer value.")
+        }
+    }
+
+    # Instantiate variable
+    params <- 0
+    
+    # Loop each layer
+    for (layer in network_model %>% names) {
+        
+        # Skip the input layer
+        if (layer == "input") next
+        
+        # Add the weights
+        params %+=% length(network_model[[layer]][["wgts"]])
+        
+        # Add the bias
+        params %+=% length(network_model[[layer]][["bias"]])
+        
+    }
+    
+    # Return the number of params
+    return(params)
+}
+
 #------------------------------------------------------------------------------#
 #                                                                              #
 #    Forward Propagation Functions                                          ####
@@ -815,8 +865,8 @@ let_ActivateSoftmax <- function(linr) {
     assert_that(linr %>% is.matrix, msg="'linr' must be type 'matrix'.")
     
     # Do work
-    expo <- exp(z)
-    expo_sum <- sum(exp(z))
+    expo <- exp(linr)
+    expo_sum <- sum(exp(linr))
     acti <- expo/expo_sum
     
     # Return
@@ -1039,7 +1089,7 @@ set_ApplyCost <- function(network_model, cost) {
 #                                                                              #
 #------------------------------------------------------------------------------#
 
-get_DifferentiateCost <- function(pred=NA, true=NA) {
+get_DifferentiateCost <- function(pred, true) {
     #' @title Differentiate Cost Value
     #' @description Differentiate the Cost value.
     #' @note Simple differentiation function.
@@ -1113,64 +1163,6 @@ set_ApplyDifferentiateCost <- function(network_model, cost_differential) {
 }
 
 
-get_DifferentiateLinear <- function(back_linr_curr, acti_prev, wgts, bias) {
-    #' @title Differentiate the linear algebra part
-    #' @description For a given layer, differentiate the linear algebra parts.
-    #' @note Do the weights of current layer first, then bias of the current layer, then activation of the the previous layer.
-    #' @param back_linr_curr `matrix`. The differentiated linear matrix of the next layer.
-    #' @param acti_prev `matrix`. The activate matrix from the previous layer.
-    #' @param wgts `matrix`. The weights matrix of the current layer.
-    #' @param bias `matrix`. The bias matrix of the current layer.
-    #' @return A list of three matrices. 1) `diff_acti_prev`: The differentiated activation matrix of the previous layer; 2) `diff_wgts`: The differentiated weights matrix of the current layer; 3) `diff_bias`: The differentiated bias matrix of the current layer.
-    #' @author chrimaho
-    #' @examples
-    #' # Works
-    #' get_DifferentiateLinear(
-    #'     back_linr_curr,
-    #'     acti_prev,
-    #'     wgts,
-    #'     bias
-    #' )
-    
-    # Packages
-    require(assertthat)
-    require(dplyr)
-    
-    # Validations
-    assert_that(back_linr_curr %>% is.matrix, msg="'back_linr_curr' must be type 'matrix'.")
-    assert_that(acti_prev %>% is.matrix, msg="'acti_prev' must be type 'matrix'.")
-    assert_that(wgts %>% is.matrix, msg="'wgts' must be type 'matrix'.")
-    assert_that(bias %>% is.matrix, msg="'bias' must be type 'matrix'.")
-    
-    # get number of samples
-    samp <- acti_prev %>% dim %>% extract(2)
-    
-    # Check
-    # print(dim(back_linr_curr))
-    # print(dim(acti_prev))
-    # print(dim(wgts))
-    
-    # Differentiate weights
-    diff_wgts <- 1/samp * (back_linr_curr %*% acti_prev)
-    
-    # Differentiate bias
-    diff_bias <- 1/samp * rowSums(back_linr_curr, dims=1)
-    
-    # Differentiate activation
-    diff_acti_prev <- wgts %*% back_linr_curr
-    
-    # Consolidate in to one list
-    list_linr <- list(
-        diff_acti_prev, 
-        diff_wgts, 
-        diff_bias
-    )
-    
-    # Return
-    return(list_linr)
-}
-
-
 let_BackwardActivateRelu <- function(diff_acti_curr, linr_curr) {
     #' @title Get Backwards ReLU Activation
     #' @description Get the differentiated ReLU activation .
@@ -1235,6 +1227,59 @@ let_BackwardActivateSigmoid <- function(diff_acti_curr, linr_curr) {
 }
 
 
+get_DifferentiateLinear <- function(back_linr_curr, acti_prev, wgts, bias) {
+    #' @title Differentiate the linear algebra part
+    #' @description For a given layer, differentiate the linear algebra parts.
+    #' @note Do the weights of current layer first, then bias of the current layer, then activation of the the previous layer.
+    #' @param back_linr_curr `matrix`. The differentiated linear matrix of the next layer.
+    #' @param acti_prev `matrix`. The activate matrix from the previous layer.
+    #' @param wgts `matrix`. The weights matrix of the current layer.
+    #' @param bias `matrix`. The bias matrix of the current layer.
+    #' @return A list of three matrices. 1) `diff_acti_prev`: The differentiated activation matrix of the previous layer; 2) `diff_wgts`: The differentiated weights matrix of the current layer; 3) `diff_bias`: The differentiated bias matrix of the current layer.
+    #' @author chrimaho
+    #' @examples
+    #' # Works
+    #' get_DifferentiateLinear(
+    #'     back_linr_curr,
+    #'     acti_prev,
+    #'     wgts,
+    #'     bias
+    #' )
+    
+    # Packages
+    require(assertthat)
+    require(dplyr)
+    
+    # Validations
+    assert_that(back_linr_curr %>% is.matrix, msg="'back_linr_curr' must be type 'matrix'.")
+    assert_that(acti_prev %>% is.matrix, msg="'acti_prev' must be type 'matrix'.")
+    assert_that(wgts %>% is.matrix, msg="'wgts' must be type 'matrix'.")
+    assert_that(bias %>% is.matrix, msg="'bias' must be type 'matrix'.")
+    
+    # get number of samples
+    samp <- acti_prev %>% dim %>% extract(2)
+    
+    # Differentiate weights
+    diff_wgts <- 1/samp * (back_linr_curr %*% acti_prev)
+    
+    # Differentiate bias
+    diff_bias <- 1/samp * rowSums(back_linr_curr, dims=1)
+    
+    # Differentiate activation
+    diff_acti_prev <- wgts %*% back_linr_curr
+    
+    # Consolidate in to one list
+    list_linr <- list(
+        diff_acti_prev, 
+        diff_wgts, 
+        diff_bias
+    )
+    
+    # Return
+    return(list_linr)
+}
+
+
 set_BackwardProp <- function(network_model) {
     #' @title Run Back Propagation
     #' @description Apply Back Propagation over a given model.
@@ -1274,13 +1319,19 @@ set_BackwardProp <- function(network_model) {
         # Get the previous layer name
         layr_prev <- network_model %>% names %>% extract(layr_indx-1)
         
-        # Set up the variables
+        # Set up the existing matrices
         linr_curr <- network_model[[layr_curr]][["linr"]]
         wgts_curr <- network_model[[layr_curr]][["wgts"]]
         bias_curr <- network_model[[layr_curr]][["bias"]]
         acti_prev <- network_model[[layr_prev]][["acti"]]
-        acti_func_back <- network_model[[layr_curr]][["acti_func"]] %>% str_to_title %>% paste0("let_BackwardActivate", .)
         diff_acti_curr <- network_model[[layr_curr]][["back_acti"]]
+        
+        # Get the activation function
+        acti_func_back <- network_model[[layr_curr]][["acti_func"]] %>% 
+            str_to_title %>% 
+            paste0("let_BackwardActivate", .)
+        
+        # Set up the empty matrices
         diff_linr_curr <- matrix()
         diff_acti_prev <- matrix()
         diff_wgts_curr <- matrix()
@@ -1308,6 +1359,7 @@ set_BackwardProp <- function(network_model) {
         
     }
     
+    # Return
     return(network_model)
 }
 

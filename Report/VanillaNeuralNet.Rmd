@@ -173,6 +173,7 @@ library(stringi)     #<-- Some string manipulation parts
 library(DescTools)   #<-- The only package that properly checks `is.integer`
 library(tictoc)      #<-- Time how long different processes take
 library(docstring)   #<-- Makes viewing the documentation a lot easier
+library(roperators)  #<-- Conveniently using nifty functions like %+=%
 ```
 
 ```{r Set Defaults, eval=TRUE, echo=FALSE}
@@ -835,6 +836,16 @@ The below code chunk initialises the network using the function defined above. T
 network_model %<>% set_InitialiseModel()
 ```
 
+## Check the Model Parameters
+
+For a quick sanity-check, the below code chunk checks for the number of parameters for the defined model. This again uses a custom function `get_ModelParametersCount()`, the definition for which can be found in the source code for this article (located [here](https://github.com/chrimaho/VanillaNeuralNetworksInR/blob/master/Functions/functions.R)).
+
+```{r}
+network_model %>% 
+    get_ModelParametersCount() %>% 
+    format(big.mark=",")
+```
+
 # Forward Propogation
 
 ## The Theory
@@ -1029,30 +1040,29 @@ set_LinearForward <- function(inpt, wgts, bias) {
 
 ## Non-Linear Component
 
-Check: [Activation Functions](https://www.desmos.com/calculator/rhx5tl8ygi)
+The real power of Neural Network comes from their Activation function. It is now the network is able to capture the non-linear aspects, and this is what emphasises their predictive power.
+
+The Activation function can be one of many different algorithms, depending on the purpose of the network. The choice of Activation can be a hyperparameter which is chosen at a later stage. The [Desmos](https://www.desmos.com/) website provides an excellent interactive way of reviewing the different types of Activations: [Activation Functions](https://www.desmos.com/calculator/rhx5tl8ygi).
+
+Each of the Activation functions are defined individually, and each only take one argument for the function, which is a matrix for which the activation will be applied. For the purposes of brevity, four of the more popular activations are provided here; but there are many, many others which can be used. The resources and equations for how to compute these functions are also provided:
+
+* `sigmoid`:
+    * $\sigma(x)=\frac{1}{1+e^{-x}}$
+    * [How to calculate a logistic sigmoid function in Python](https://kite.com/python/answers/how-to-calculate-a-logistic-sigmoid-function-in-python)
+    * [Implement sigmoid function using Numpy](https://www.geeksforgeeks.org/implement-sigmoid-function-using-numpy/)
+* `relu`:
+    * $r(x)=max(0,x)$
+    * [A beginner’s guide to NumPy with Sigmoid, ReLu and Softmax activation functions](https://medium.com/ai%C2%B3-theory-practice-business/a-beginners-guide-to-numpy-with-sigmoid-relu-and-softmax-activation-functions-25b840a9a272)
+* `softmax`:
+    * $f(x)=\frac{exp(x_j)}{\Sigma_j exp(x_j)}$
+    * [Softmax Activation Function Explained](https://towardsdatascience.com/softmax-activation-function-explained-a7e1bc3ad60)
+* `swish`:
+    * $s(x)=x \cdot f(\beta \cdot x)$
+    * [Searching for Activation Functions](https://arxiv.org/pdf/1710.05941.pdf)
+    * [Implementing Swish Activation Function in Keras](https://www.bignerdranch.com/blog/implementing-swish-activation-function-in-keras/)
 
 ```{r}
 let_ActivateSigmoid <- function(linr) {
-    #' @title Sigmoid Activation
-    #' @description Activate a matrix using the Sigmoid algorithm.
-    #' @note The `linr` is the result of running the `set_LinearForward()` function.
-    #' @param linr `matrix`. The matrix to be activated.
-    #' @return An activated matrix.
-    #' @seealso https://kite.com/python/answers/how-to-calculate-a-logistic-sigmoid-function-in-python
-    #' @seealso https://www.geeksforgeeks.org/implement-sigmoid-function-using-numpy/
-    #' @author chrimaho
-    #' @examples
-    #' # Works
-    #' let_ActivateSigmoid(
-    #'     linr
-    #' )
-    
-    # Packages
-    require(assertthat)
-    require(dplyr)
-    
-    # Validations
-    assert_that(linr %>% is.matrix, msg="'linr' must be type 'matrix'.")
     
     # Do work
     acti <- 1/(1+exp(-linr))
@@ -1060,28 +1070,9 @@ let_ActivateSigmoid <- function(linr) {
     # Return
     return(acti)
 }
-
-
+```
+```{r}
 let_ActivateRelu <- function(linr) {
-    #' @title ReLU Activation
-    #' @description Activate a matrix using the Relu algorithm.
-    #' @note The `linr` is the result of running the `set_LinearForward()` function.
-    #' @param linr `matrix`. The matrix to be activated.
-    #' @return An activated matrix.
-    #' @seealso https://medium.com/ai%C2%B3-theory-practice-business/a-beginners-guide-to-numpy-with-sigmoid-relu-and-softmax-activation-functions-25b840a9a272
-    #' @author chrimaho
-    #' @examples
-    #' # Works
-    #' let_ActivateRelu(
-    #'     linr
-    #' )
-    
-    # Packages
-    require(assertthat)
-    require(dplyr)
-    
-    # Validations
-    assert_that(linr %>% is.matrix, msg="'linr' must be type 'matrix'.")
     
     # Do work
     acti <- sapply(linr, max, 0) %>% 
@@ -1090,61 +1081,21 @@ let_ActivateRelu <- function(linr) {
     # Return
     return(acti)
 }
-
-
+```
+```{r}
 let_ActivateSoftmax <- function(linr) {
-    #' @title Softmax Activation
-    #' @description Activate a matrix using the Softmax algorithm.
-    #' @note The `linr` is the result of running the `set_LinearForward()` function.
-    #' @param linr `matrix`. The matrix to be activated.
-    #' @return An activated matrix.
-    #' @seealso https://medium.com/ai%C2%B3-theory-practice-business/a-beginners-guide-to-numpy-with-sigmoid-relu-and-softmax-activation-functions-25b840a9a272
-    #' @author chrimaho
-    #' @examples
-    #' # Works
-    #' let_ActivateSoftmax(
-    #'     linr
-    #' )
-    
-    # Packages
-    require(assertthat)
-    require(dplyr)
-    
-    # Validations
-    assert_that(linr %>% is.matrix, msg="'linr' must be type 'matrix'.")
     
     # Do work
-    expo <- exp(z)
-    expo_sum <- sum(exp(z))
+    expo <- exp(linr)
+    expo_sum <- sum(exp(linr))
     acti <- expo/expo_sum
     
     # Return
     return(acti)
 }
-
-
+```
+```{r}
 let_ActivateSwish <- function(linr, beta=0.1) {
-    #' @title Swish Activation
-    #' @description Activate a matrix using the Swish algorithm.
-    #' @note The `linr` is the result of running the `set_LinearForward()` function.
-    #' @param linr `matrix`. The matrix to be activated.
-    #' @param beta `numeric`. The beta amount to be used.
-    #' @return An activated matrix.
-    #' @seealso https://arxiv.org/pdf/1710.05941.pdf
-    #' @seealso https://www.bignerdranch.com/blog/implementing-swish-activation-function-in-keras/
-    #' @author chrimaho
-    #' @examples
-    #' # Works
-    #' let_ActivateSwish(
-    #'     linr
-    #' )
-    
-    # Packages
-    require(assertthat)
-    require(dplyr)
-    
-    # Validations
-    assert_that(linr %>% is.matrix, msg="'linr' must be type 'matrix'.")
     
     # Do work
     acti <- linr * (beta * linr)
@@ -1156,44 +1107,35 @@ let_ActivateSwish <- function(linr, beta=0.1) {
 
 ## Forward Prop
 
+The `set_ForwardProp()` function pulls together all of the components mentioned above. It implements the following steps:
+
+1. Loop through each layer of the `network_model`.
+1. Get the layer name for the current layer.
+1. Implement a 'pass-thru' process for the `input` layer.
+1. Extract the relevant information, including:
+    1. Layer name of the _previous_ layer
+    1. Activation matrix of the _previous_ layer
+    1. Weights matrix of the _current_ layer
+    1. Bias matrix for the _current_ layer
+1. Apply linear algebra component.
+1. Apply the non-linear activation component.
+    1. Note the difference between the activation of the hidden layers and that of the final layer.
+1. Apply the relevant information back on to the network.
+1. Return the `network_model` object.
+
+In order to implement this process, the function takes only four arguments:
+
+1. `network_model`: The network model to be updated.
+1. `data_in`: The 4-Dimensional array of training images, as defined above.
+1. `activation_hidden`: The Activation function to be applied to the hidden layers.
+1. `activation_sigmoid`: The Activation function to be applied to the final (`output`) layer.
+
 ```{r}
-set_ForwardProp <- function(network_model, data_in, activation_hidden="relu", activation_final="sigmoid") {
-    #' @title Run Forward Propagation
-    #' @description Run forward propagation over a model (`network_model`) with a given input data set (`data_in`) and using different activations for the hidden and output layers (`activation_hidden` & `activation_final`).
-    #' @note Add a note for the developer.
-    #' @param network_model `list`. The model to be used. Note, must be instantiated and initialised, after having run the `set_InitialiseModel()` function.
-    #' @param data_in `array`. A 4-D array containing the images for propagation. Note, the dimensions must be: `images`x`width`x`height`x`colour`.
-    #' @param activation_hidden `string`. The activation algorithm to use for the hidden layers. Must be one of: 'sigmoid', 'relu', 'softmax', or 'swish'. Default value `relu`.
-    #' @param activation_final `string`. The activation algorithm to use for the final layer. Must be one of: 'sigmoid', 'relu', 'softmax', or 'swish'. Default value `sigmoid`.
-    #' @return The same `network_model`, after having completed forward propagation.
-    #' @author chrimaho
-    #' @examples
-    #' # Works
-    #' set_ForwardProp(
-    #'     network_model,
-    #'     data_in,
-    #'     activation_hidden,
-    #'     activation_final
-    #' )
-    
-    # Packages
-    require(assertthat)
-    require(dplyr)
-    
-    # Validations
-    assert_that(network_model %>% is.list, msg="'network_model' must be type 'list'.")
-    assert_that(data_in %>% is.array, msg="'data_in' must be type 'array'.")
-    assert_that(is.string(activation_hidden), msg="'activation_hidden' must be type 'string'.")
-    assert_that(is.string(activation_final), msg="'activation_final' must be type 'string'.")
-    assert_that(activation_hidden %in% c("sigmoid","relu","softmax","swish"), msg="'activation_hidden' must be one of: 'sigmoid', 'relu', 'softmax', or 'swish'.")
-    assert_that(activation_final %in% c("sigmoid","relu","softmax","swish"), msg="'activation_final' must be one of: 'sigmoid', 'relu', 'softmax', or 'swish'.")
-    assert_that(network_model %>% names %>% extract(1) == "input", msg="The first layer of 'network_model' must be 'input'.")
-    assert_that(network_model %>% names %>% rev %>% extract(1) == "output", msg="The last layer of 'network_model' must be 'output'.")
-    for (name in network_model %>% names) {
-        if (!name %in% c("input","output")) {
-            assert_that(name %>% as.numeric %>% is.integer, msg="Each hidden layer in 'network_model' must be an integer value.")
-        }
-    }
+set_ForwardProp <- function(network_model, 
+                            data_in, 
+                            activation_hidden="relu", 
+                            activation_final="sigmoid"
+                            ) {
     
     # Do work
     for (index in 1:length(names(network_model))) {
@@ -1243,44 +1185,28 @@ set_ForwardProp <- function(network_model, data_in, activation_hidden="relu", ac
 
 ## Run
 
+The last step of the Forward Propagation process is to actually run the function. In the below code chunk, the `tic()` and `toc()` functions are implemented to time how long a process takes to run.
+
 ```{r}
 tic()
 network_model <- set_ForwardProp(network_model, trn_img, "relu", "sigmoid")
 toc()
 ```
 
+As mentioned above in the [Split Data](#splitdata) section, the `trn_img` object is over `82 Mb` large. The entire end-to-end process for forward propagation took only `3 seconds` to run; which is quite impressive, and is a testament to the power of mathematics.
+
 # Calculate the Cost
+
+Once the forward-propagation part has been completed, it's then necessary to get a measure for how wrong the model is. This will then be used to update the model parameters during the backward propagation steps.
 
 ## Set Up
 
+The first step is to write the functions to be used for getting the cost for the model. Ultimately, it does not matter how bad the results are for the first round of training; remember, the model was initialised with random numbers. What's important is that the cost functions should be determining a _single_ value for the cost of the network, and this single function will be what is used for the derivative functions to be used in the backwards propagation steps.
+
+Note here, that there is a very small epsilon value used (`epsi`), which effectively adjusts for a perfect prediction made by the model. The reason for this is not that we don't want the model to predict a perfect value, it's that we want the model to predict the probability of a perfect value. Furthermore, it's impossible to take a logarithmic value of a $0$, so therefore it's necessary to adjust this to be _just_ a little bit off-zero.
+
 ```{r}
 get_ComputeCost <- function(pred, true, epsi=1e-10) {
-    #' @title Compute the Cost
-    #' @description Compute the cost of a given network.
-    #' @note Uses a tiny epsilon value in order to account for perfect predictions.
-    #' @param pred `matrix`. The matrix of values to use for the prediction.
-    #' @param true `matrix`. The matrix of values to use for the truth.
-    #' @param epsi `number`. A very small epsilon value, in order to adjust for perfect predictions.
-    #' @return A single floating point number.
-    #' @author chrimaho
-    #' @examples
-    #' # Works
-    #' get_ComputeCost(
-    #'     pred,
-    #'     true,
-    #'     epsi
-    #' )
-    
-    # Packages
-    require(assertthat)
-    require(dplyr)
-    
-    # Validations
-    assert_that(pred %>% {is.matrix(.) | is.vector(.)}, msg="'pred' must be type 'matrix' or type 'vector'.")
-    assert_that(true %>% {is.matrix(.) | is.vector(.)}, msg="'true' must be type 'matrix' or type 'vector'.")
-    assert_that(length(pred) == length(true), msg="The length of 'pred' must equal the length of 'true'.")
-    assert_that(epsi %>% is.number, msg="'epsi' must be type 'number'.")
-    assert_that(epsi < 0.0001, msg="'epsi' should be a very small epsilon value.")
     
     # Get number of samples
     samp <- length(true)
@@ -1306,37 +1232,12 @@ get_ComputeCost <- function(pred, true, epsi=1e-10) {
     # Return
     return(cost)
 }
+```
 
+Then, the cost must be applied back on to the network. For this, the exact same value is applied to each layer of the network.
 
+```{r}
 set_ApplyCost <- function(network_model, cost) {
-    #' @title Apply Cost to model
-    #' @description Apply the calculated cost to each layer of a given `network_model`.
-    #' @note It simply applies the same value to the `cost` section of each layer.
-    #' @param network_model `list`. The network model that should have the cost applied to it. It must be an instantiated and initialised model, which has already had the `set_ForwardProp` function applied to it. Default value `NA`.
-    #' @param cost `number`. The cost that has been calculated for the model. It is the result of running the `get_ComputeCost()` function. Default value `NA`.
-    #' @return The `network_model`, with the cost value applied to each layer.
-    #' @author chrimaho
-    #' @examples
-    #' # Works
-    #' set_ApplyCost(
-    #'     network_model=NA,
-    #'     cost=NA
-    #' )
-    
-    # Packages
-    require(assertthat)
-    require(dplyr)
-    
-    # Validations
-    assert_that(network_model %>% is.list, msg="'network_model' must be type 'list'.")
-    assert_that(cost %>% is.number, msg="'cost' must be type 'number'.")
-    assert_that(network_model %>% names %>% extract(1) == "input", msg="The first layer of 'network_model' must be 'input'.")
-    assert_that(network_model %>% names %>% rev %>% extract(1) == "output", msg="The last layer of 'network_model' must be 'output'.")
-    for (name in network_model %>% names) {
-        if (!name %in% c("input","output")) {
-            assert_that(name %>% as.numeric %>% is.integer, msg="Each hidden layer in 'network_model' must be an integer value.")
-        }
-    }
     
     # Apply back to the model
     for (layer in network_model %>% names) {
@@ -1348,41 +1249,34 @@ set_ApplyCost <- function(network_model, cost) {
 }
 ```
 
-## Run
+## Run the Cost Functions
+
+The below code chunk runs the cost functions, utilising the functions defined above.
 
 ```{r}
-network_model <- set_ApplyCost(network_model, get_ComputeCost(network_model[["output"]][["acti"]], trn_cls))
+network_model <- set_ApplyCost(
+    network_model, 
+    get_ComputeCost(network_model[["output"]][["acti"]], trn_cls)
+)
 ```
 
 # Backward Propogation
 
+The function of back-propagation is intended to take the cost of the model, and then differentiate each of the Weights and Biases matrices in the network to determine to what extent each and every single parameter in the network contributed to that final cost value. To do this, the process works backwards from the end to the start, following the following steps:
+
+1. Differentiate the final cost value
+1. Differentiate the activation matrices
+1. Differentiate the linear algebra matrices
+1. Continue to the previous layer.
+
+Each step in the back-propagation process requires calculus to derive the values, and the final function is implemented here. As this paper is not intended to show how to derive the equations, but more how to run the functions, the necessary algebraic steps are not included here.
+
 ## Differentiate Cost
 
-### Set
+As similar to the functions used to get the cost, the cost differential values are first calulated, then applied to each layer of the network.
 
 ```{r}
-get_DifferentiateCost <- function(pred=NA, true=NA) {
-    #' @title Differentiate Cost Value
-    #' @description Differentiate the Cost value.
-    #' @note Simple differentiation function.
-    #' @param pred `matrix`. The matrix of predicted values.
-    #' @param true `matrix`. The matrix of true values.
-    #' @return A floating point vlue.
-    #' @author chrimaho
-    #' @examples
-    #' # Works
-    #' get_DifferentiateCost(
-    #'     pred,
-    #'     true
-    #' )
-    
-    # Packages
-    require(assertthat)
-    require(dplyr)
-    
-    # Validations
-    assert_that(pred %>% {is.matrix(.) | is.vector(.)}, msg="'pred' must be type 'matrix' or type 'vector'.")
-    assert_that(true %>% {is.matrix(.) | is.vector(.)}, msg="'true' must be type 'matrix' or type 'vector'.")
+get_DifferentiateCost <- function(pred, true) {
     
     # Do work
     diff_cost <- -(divide_by(true, pred) - divide_by(1-true, 1-pred))
@@ -1390,37 +1284,10 @@ get_DifferentiateCost <- function(pred=NA, true=NA) {
     # Return
     return(diff_cost)
 }
+```
 
-
+```{r}
 set_ApplyDifferentiateCost <- function(network_model, cost_differential) {
-    #' @title Apply Cost Differential to the Network
-    #' @description Apply the calculated Cost Differential function to the given network.
-    #' @note Applies the same value to each layer of the network. The `cost_differential` is transposed for the `output` layer by running the `t()` function, which is necessary for the back-propagation parts.
-    #' @param network_model `list`. The model that the cost differential should be applied to. Must be a model that has been instantiated and initialised, and has had the `set_ForwardProp()` function run over it.
-    #' @param cost_differential `number`. The differentiated cost for the given model. The result of running the `get_DifferentiateCost()` function.
-    #' @return The `network_model`, after having the `cost_differential` applied to each layer..
-    #' @author chrimaho
-    #' @examples
-    #' # Works
-    #' set_ApplyDifferentiateCost(
-    #'     network_model,
-    #'     cost_differential
-    #' )
-    
-    # Packages
-    require(assertthat)
-    require(dplyr)
-    
-    # Validations
-    assert_that(network_model %>% is.list, msg="'network_model' must be type 'list'.")
-    assert_that(cost_differential %>% is.numeric, msg="'cost_differential' must be type 'numeric'.")
-    assert_that(network_model %>% names %>% extract(1) == "input", msg="The first layer of 'network_model' must be 'input'.")
-    assert_that(network_model %>% names %>% rev %>% extract(1) == "output", msg="The last layer of 'network_model' must be 'output'.")
-    for (name in network_model %>% names) {
-        if (!name %in% c("input","output")) {
-            assert_that(name %>% as.numeric %>% is.integer, msg="Each hidden layer in 'network_model' must be an integer value.")
-        }
-    }
     
     # Do work
     for (layer in names(network_model)) {
@@ -1435,51 +1302,47 @@ set_ApplyDifferentiateCost <- function(network_model, cost_differential) {
 }
 ```
 
-### Run
+```{r}
+network_model <- set_ApplyDifferentiateCost(
+    network_model, 
+    get_DifferentiateCost(network_model[["output"]][["acti"]],trn_cls)
+)
+```
+
+## Differentiate Activation
+
+
 
 ```{r}
-network_model <- set_ApplyDifferentiateCost(network_model, get_DifferentiateCost(network_model[["output"]][["acti"]], trn_cls))
+let_BackwardActivateRelu <- function(diff_acti_curr, linr_curr) {
+    
+    # Do work
+    diff_linr_curr <- diff_acti_curr
+    diff_linr_curr[linr_curr<=0] <- 0
+    
+    # Return
+    return(diff_linr_curr)
+}
+```
+```{r}
+let_BackwardActivateSigmoid <- function(diff_acti_curr, linr_curr) {
+    
+    # Do work
+    temp <- 1/(1+exp(-linr_curr))
+    diff_linr_curr <- t(diff_acti_curr) * temp * (1-temp)
+    
+    # Return
+    return(t(diff_linr_curr))
+}
 ```
 
 ## Differentiate Linear
 
 ```{r}
 get_DifferentiateLinear <- function(back_linr_curr, acti_prev, wgts, bias) {
-    #' @title Differentiate the linear algebra part
-    #' @description For a given layer, differentiate the linear algebra parts.
-    #' @note Do the weights of current layer first, then bias of the current layer, then activation of the the previous layer.
-    #' @param back_linr_curr `matrix`. The differentiated linear matrix of the next layer.
-    #' @param acti_prev `matrix`. The activate matrix from the previous layer.
-    #' @param wgts `matrix`. The weights matrix of the current layer.
-    #' @param bias `matrix`. The bias matrix of the current layer.
-    #' @return A list of three matrices. 1) `diff_acti_prev`: The differentiated activation matrix of the previous layer; 2) `diff_wgts`: The differentiated weights matrix of the current layer; 3) `diff_bias`: The differentiated bias matrix of the current layer.
-    #' @author chrimaho
-    #' @examples
-    #' # Works
-    #' get_DifferentiateLinear(
-    #'     back_linr_curr,
-    #'     acti_prev,
-    #'     wgts,
-    #'     bias
-    #' )
-    
-    # Packages
-    require(assertthat)
-    require(dplyr)
-    
-    # Validations
-    assert_that(back_linr_curr %>% is.matrix, msg="'back_linr_curr' must be type 'matrix'.")
-    assert_that(acti_prev %>% is.matrix, msg="'acti_prev' must be type 'matrix'.")
-    assert_that(wgts %>% is.matrix, msg="'wgts' must be type 'matrix'.")
-    assert_that(bias %>% is.matrix, msg="'bias' must be type 'matrix'.")
     
     # get number of samples
     samp <- acti_prev %>% dim %>% extract(2)
-    
-    # Check
-    # print(dim(back_linr_curr))
-    # print(dim(acti_prev))
-    # print(dim(wgts))
     
     # Differentiate weights
     diff_wgts <- 1/samp * (back_linr_curr %*% acti_prev)
@@ -1502,104 +1365,12 @@ get_DifferentiateLinear <- function(back_linr_curr, acti_prev, wgts, bias) {
 }
 ```
 
-## Differentiate Activation
-
-```{r}
-let_BackwardActivateRelu <- function(diff_acti_curr, linr_curr) {
-    #' @title Get Backwards ReLU Activation
-    #' @description Get the differentiated ReLU activation .
-    #' @note Simply reversing the work of the `let_ActivateRelu()` function.
-    #' @param diff_acti_curr `matrix`. The differentiated activation matrix of the current layer.
-    #' @param linr_curr `matrix`. The linear algebra matrix in the current layer.
-    #' @return The differentiated linear algebra matrix of the current layer.
-    #' @author chrimaho
-    #' @examples
-    #' # Works
-    #' let_BackwardActivateRelu(
-    #'     diff_acti_curr,
-    #'     linr_curr
-    #' )
-    
-    # Packages
-    require(assertthat)
-    require(dplyr)
-    
-    # Validations
-    assert_that(diff_acti_curr %>% is.matrix, msg="'diff_acti_curr' must be type 'matrix'.")
-    assert_that(linr_curr %>% is.matrix, msg="'linr_curr' must be type 'matrix'.")
-    
-    # Do work
-    diff_linr_curr <- diff_acti_curr
-    diff_linr_curr[linr_curr<=0] <- 0
-    
-    # Return
-    return(diff_linr_curr)
-}
-
-
-let_BackwardActivateSigmoid <- function(diff_acti_curr, linr_curr) {
-    #' @title Get Backwards Sigmoid Activation
-    #' @description Get the differentiated Sigmoid activation .
-    #' @note Simply reversing the work of the `let_ActivateSigmoid()` function. Need to transpose a couple of times in order to ensure that the matrices are all aligned correctly.
-    #' @param diff_acti_curr `matrix`. The differentiated activation matrix of the current layer.
-    #' @param linr_curr `matrix`. The linear algebra matrix in the current layer.
-    #' @return The differentiated linear algebra matrix of the current layer.
-    #' @author chrimaho
-    #' @examples
-    #' # Works
-    #' let_BackwardActivateRelu(
-    #'     diff_acti_curr,
-    #'     linr_curr
-    #' )
-    
-    # Packages
-    require(assertthat)
-    require(dplyr)
-    
-    # Validations
-    assert_that(diff_acti_curr %>% is.matrix, msg="'diff_acti_curr' must be type 'matrix'.")
-    assert_that(linr_curr %>% is.matrix, msg="'linr_curr' must be type 'matrix'.")
-    
-    # Do work
-    temp <- 1/(1+exp(-linr_curr))
-    diff_linr_curr <- t(diff_acti_curr) * temp * (1-temp)
-    
-    # Return
-    return(t(diff_linr_curr))
-}
-```
-
 ## Run Backward Propogation
 
 ### Set
 
 ```{r}
 set_BackwardProp <- function(network_model) {
-    #' @title Run Back Propagation
-    #' @description Apply Back Propagation over a given model.
-    #' @note Skips the `input` layer, because that doesn't need to be back-propagated. Also, it runs through each layer in reverse; in the same way that the `set_ForwardProp()` function works from start to end, the `set_BackwardProp()` function works from end to start.
-    #' @param network_model `list`. The model to run back-propagation over.
-    #' @return The same `network_model`, but having had back-propagation applied to it.
-    #' @author chrimaho
-    #' @examples
-    #' # Works
-    #' set_BackwardProp(
-    #'     network_model
-    #' )
-    
-    # Packages
-    require(assertthat)
-    require(dplyr)
-    
-    # Validations
-    assert_that(network_model %>% is.list, msg="'network_model' must be type 'list'.")
-    assert_that(network_model %>% names %>% extract(1) == "input", msg="The first layer of 'network_model' must be 'input'.")
-    assert_that(network_model %>% names %>% rev %>% extract(1) == "output", msg="The last layer of 'network_model' must be 'output'.")
-    for (name in network_model %>% names) {
-        if (!name %in% c("input","output")) {
-            assert_that(name %>% as.numeric %>% is.integer, msg="Each hidden layer in 'network_model' must be an integer value.")
-        }
-    }
     
     # Loop through each layer in reverse order
     for (layr_indx in network_model %>% names %>% length %>% 1:. %>% rev) {
@@ -1613,13 +1384,19 @@ set_BackwardProp <- function(network_model) {
         # Get the previous layer name
         layr_prev <- network_model %>% names %>% extract(layr_indx-1)
         
-        # Set up the variables
+        # Set up the existing matrices
         linr_curr <- network_model[[layr_curr]][["linr"]]
         wgts_curr <- network_model[[layr_curr]][["wgts"]]
         bias_curr <- network_model[[layr_curr]][["bias"]]
         acti_prev <- network_model[[layr_prev]][["acti"]]
-        acti_func_back <- network_model[[layr_curr]][["acti_func"]] %>% str_to_title %>% paste0("let_BackwardActivate", .)
         diff_acti_curr <- network_model[[layr_curr]][["back_acti"]]
+        
+        # Get the activation function needed
+        acti_func_back <- network_model[[layr_curr]][["acti_func"]] %>% 
+            str_to_title %>% 
+            paste0("let_BackwardActivate", .)
+        
+        # Set up the empty matrices
         diff_linr_curr <- matrix()
         diff_acti_prev <- matrix()
         diff_wgts_curr <- matrix()
