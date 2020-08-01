@@ -1391,7 +1391,7 @@ set_BackwardProp <- function(network_model) {
         acti_prev <- network_model[[layr_prev]][["acti"]]
         diff_acti_curr <- network_model[[layr_curr]][["back_acti"]]
         
-        # Get the activation function needed
+        # Get the activation function
         acti_func_back <- network_model[[layr_curr]][["acti_func"]] %>% 
             str_to_title %>% 
             paste0("let_BackwardActivate", .)
@@ -1424,6 +1424,7 @@ set_BackwardProp <- function(network_model) {
         
     }
     
+    # Return
     return(network_model)
 }
 ```
