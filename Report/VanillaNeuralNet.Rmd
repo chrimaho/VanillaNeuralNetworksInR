@@ -2,7 +2,7 @@
 title: 'Vanilla Neural Networks in R'
 subtitle: 'Designing and Building Neural Networks from Scratch in R, using no Deep Learning Frameworks'
 author: 'Author: [Chris Mahoney](https://www.linkedin.com/in/chrimaho/)'
-date: 'Special thanks to: Alex Scriven'
+date: 'Special thanks to: [Alex Scriven](https://www.linkedin.com/in/alexjscriven/'
 toc-title: Contents
 output:
     html_notebook: 
@@ -64,7 +64,7 @@ output:
     <!-- font-size: 40px; -->
 }
 h1 {
-    margin-top: 40px;
+    margin-top: 60px;
     font-weight: bold;
     font-size: 30px;
 }
@@ -79,20 +79,23 @@ h3 {
     font-size: 20px;
     font-style: italic;
 }
+div pre {
+    line-height:normal;
+}
 </style>
 
 
-# Introduction {#introduction}
+# Introduction {#Introduction}
 
 Modern-day Data Science techniques frequently use robust frameworks for designing and building machine learning solutions. In the [`R`](https://www.r-project.org/) community, packages such as the [`tidyverse`](https://www.tidyverse.org/) and the [`caret`](http://caret.r-forge.r-project.org/) packages are frequently referenced; and within [`Python`](), packages such as [`numpy`](https://numpy.org/), [`pandas`](https://pandas.pydata.org/), [`sci-kit learn`](https://scikit-learn.org/) are frequently referenced. There are even some packages that have been built to be used in either language, such as [`keras`](https://keras.io/), [`pytorch`](https://pytorch.org/), [`tensorflow`](https://www.tensorflow.org/). However, the limitation of using these packages is the '_blackbox_' phenomenon, where users do not understand what is happening behind-the-scenes (or 'under the hood', if you will). Users know how to use the functions, and can interpret the results, but don't necessarily know how the packages were able to achieve the results.
 
-The purpose of this paper is to create a 'back to basics' approach to designing Deep Learning solutions. The intention is not to create the most predictive model, nor is it to use the latest and greatest techniques (such as convolution or recursion); but the intention is to create a _basic_ neural network, from _scratch_, using _no_ frameworks, and to walk through the methodology.
+The purpose of this paper is to create a 'back to basics' approach to designing Deep Learning solutions. The intention is not to create the most predictive model, nor is it to use the latest and greatest techniques (such as [convolution](https://en.wikipedia.org/wiki/Convolutional_neural_network) or [recursion](https://en.wikipedia.org/wiki/Recurrent_neural_network)); but the intention is to create a _basic_ neural network, from _scratch_, using _no_ frameworks, and to walk through the methodology.
 
 **Note**: The word '_Vanilla_' in 'Vanilla Neural Networks' simply refers to the fact it is built from scratch, and does not use any pre-existing frameworks in its construction.
 
-# Background {#background}
+# Background {#Background}
 
-## Context {#context}
+## Context {#Context}
 
 There are already many websites and blogs which explain how this process is done. Such as [Jason Brownlee](https://machinelearningmastery.com/about/)'s article [_How to Code a Neural Network with Backpropagation In Python (from scratch)_](https://machinelearningmastery.com/implement-backpropagation-algorithm-scratch-python/), and [DeepLearning.ai](https://notebooks.azure.com/goldengrape/projects/deeplearning-ai)'s notebook [_dnn_app_utils_v2.py_](https://notebooks.azure.com/goldengrape/projects/deeplearning-ai/html/COURSE%201%20Neural%20Networks%20and%20Deep%20Learning/Week%204/Deep%20Neural%20Network%20Application_%20Image%20Classification/dnn_app_utils_v2.py) (on the [Microsoft Azure Notebooks](https://notebooks.azure.com/) network). However, these sources are all written in `Python`. Which is fine, if that's what is needed, and there are some very legitimate reasons to use `Python` over other languages. But this paper will be written in `R`.
 
@@ -103,7 +106,7 @@ The `R` language was chosen for two reasons:
 
 Therefore, let's see how to architect and construct a Vanilla Neural Network in `R`.
 
-## What It's Not {#whatitsnot}
+## What It's Not {#WhatItsNot}
 
 This article does not cover the _latest_ and _greatest_ Deep Learning architectures (like [Convolution](https://www.tensorflow.org/tutorials/images/cnn) or [Recursion](https://www.tensorflow.org/guide/keras/rnn)). As such the final performance may not be as good as it _could_ be, if these architectures were used.
 
@@ -113,11 +116,11 @@ This article does not cover _why_ Neural Networks work the way they do, and the 
 
 This article does _not_ point the reader to other packages and applications which may already have this information set up and working. Packages like [`tensorflow`](https://www.rdocumentation.org/packages/tensorflow) and [`nnet`](https://www.rdocumentation.org/packages/nnet) already have this covered.
 
-What this article _actually_ is, is a functional walk-through, how-to piece, for creating a Vanilla Neural Network (a Feed-Forward Network), from scratch, step-by-step, in the `R` programming language. It contains lots of code, and lots of 
+What this article _actually_ is, is a functional walk-through, how-to piece, for creating a Vanilla Neural Network (a Feed-Forward Network), from scratch, step-by-step, in the `R` programming language. It contains lots of code, and lots of technical details.
 
-# Semantics {#semantics}
+# Semantics {#Semantics}
 
-## Layout {#layout}
+## Layout {#Layout}
 
 This article is laid our in such a way to describe how a Neural Network is built from the ground-up. It will walk through the steps to:
 
@@ -132,7 +135,7 @@ This article is laid our in such a way to describe how a Neural Network is built
 
 In the interest of brevity, the functions defined here will not include all the commentary and validations that should be included in a function. They will only include basic steps and prompts. However, the source code for this article (located [here](https://github.com/chrimaho/VanillaNeuralNetworksInR/blob/master/Functions/functions.R)) does contain all the appropriate function docstrings and assertions.
 
-## Syntax {#syntax}
+## Syntax {#Syntax}
 
 For the most part, the syntax in this article is kept to the [`dplyr`](https://www.rdocumentation.org/packages/dplyr) 'pipe' method (which uses the `%>%` symbol). However, in certain sections the R [`base`](https://www.rdocumentation.org/packages/base) syntax is used (for example, in function declaration lines).
 
@@ -153,16 +156,16 @@ Throughout the article, many custom functions are written. Each of these are pre
     * Similar to `get`, in that it takes other values parsed to this function to derive an outcome, however it will `let` this value be utilised by another object or function.
     * Used mainly for the initialisation and activation functions.
 
-# Set Up {#setup}
+# Set Up {#SetUp}
 
-## Load Packages {#loadpackages}
+## Load Packages {#LoadPackages}
 
 The first step is to import the relevant packages. This list includes the the main packages used throughout this process; and the main purpose of which is also listed.
 
 Note what is listed above about not using existing Deep Learning packages, and yet the `tensorflow` package is included. Why? Well, this is used for only accessing the data, which will be covered in the next section. The `tensorflow` package is not used for building and training any networks.
 
 ```{r Load Packages, eval=TRUE, echo=TRUE, warning=FALSE, message=FALSE}
-library(tensorflow)  #<-- Only used for getting the data. Nothing else
+library(tensorflow)  #<-- Only used for getting the data, nothing else
 library(tidyverse)   #<-- Used for accessing various tools
 library(magrittr)    #<-- Extends the `dplyr` syntax
 library(grDevices)   #<-- For plotting the images
@@ -192,9 +195,9 @@ options(scipen = 999)
 source("../Functions/functions.R")
 ```
 
-# Get Data {#getdata}
+# Get Data {#GetData}
 
-## Download Data {#downloaddata}
+## Download Data {#DownloadData}
 
 The dataset to be used is the [CIFAR-10](https://www.cs.toronto.edu/~kriz/cifar.html) dataset. It's chosen for a number of reasons, including:
 
@@ -232,35 +235,37 @@ The following code chunk has the following process steps:
 
 ```{r Get Data, eval=TRUE, echo=TRUE, messages=FALSE, errors=FALSE}
 # Download Data
+# NOTE: The first time you run this function, it may take a while to download.
+#       All other times you run it, Tensorflow will load from Cache before re-downloading.
 cifar <- tf$keras$datasets$cifar10$load_data() %>% 
     extract2(2) %>% 
     set_names(c("images","classes"))
 ```
 
-## Get Class Definitions {#getclassdefinitions}
+## Get Class Definitions {#GetClassDefinitions}
 
-One of the challenges behind accessing this data from the `tensorflow` package is that the classes are only numeric values (`0` to `9`) for each type of image. The definitions for these images can be found on GitHub ([EN10/CIFAR](https://github.com/EN10/CIFAR#classes)). These classes are defined in the following code chunk.
+One of the challenges behind accessing this data from the `tensorflow` package is that the classes are only numeric values (`0` to `9`) for each type of image. The definitions for these images can be found on GitHub ([GitHub > EN10 > CIFAR](https://github.com/EN10/CIFAR#classes)). These classes are defined in the following code chunk.
 
 ```{r Define Class List, eval=TRUE, echo=TRUE}
 # Define classes
-ClassList <- list(
-    "0"="airplane",
-    "1"="automobile",
-    "2"="bird",
-    "3"="cat",
-    "4"="deer",
-    "5"="dog",
-    "6"="frog",
-    "7"="horse",
-    "8"="ship",
-    "9"="truck"
+ClassList <- c(
+    "0" = "airplane",
+    "1" = "automobile",
+    "2" = "bird",
+    "3" = "cat",
+    "4" = "deer",
+    "5" = "dog",
+    "6" = "frog",
+    "7" = "horse",
+    "8" = "ship",
+    "9" = "truck"     
 )
 ```
 
 
-# Check Data {#checkimages}
+# Check Data {#CheckData}
 
-## Check Objects {#checkobjects}
+## Check Objects {#CheckObjects}
 
 It is important to check the data, to ensure that it has been generated correctly, and all the information looks okay. For this, a custom-function is written (`get_ObjectAttributes()`), the source code for which can be found [here](https://github.com/chrimaho/VanillaNeuralNetworksInR/blob/master/Functions/functions.R). As seen by the following code chunk, the `images` object is a 4-Dimensional numeric array, with `10,000` images, each `32x32` pixels, and `3` colour elements. The entire object is over `117 Mb` large.
 
@@ -282,7 +287,7 @@ cifar %>%
     cat
 ```
 
-## Check Images
+## Check Images {#CheckImages}
 
 After having gained an appreciation of the size of the objects in memory, it is then worth while to check the actual images themselves. As humans, we understand the actual images and the colours, better than we understand the numbers.
 
@@ -342,7 +347,7 @@ for (image in 1:16) {
 gridExtra::grid.arrange(grobs=lst, ncol=4)
 ```
 
-# Prepare the Data {#prepdata}
+# Prepare the Data {#PrepareData}
 
 There are four steps to preparing the data:
 
@@ -351,7 +356,7 @@ There are four steps to preparing the data:
 1. Reshape
 1. Standardise
 
-## Reclassify {#reclassify}
+## Reclassify {#Reclassify}
 
 For the purposes of this paper, let's assume that we are trying to predict whether or not the picture is a `car` or `not`. This will require transforming the data in to a binary classification problem, where the Neural Network will be looking to predict a `1` or a `0` our of the data. This will mean that the model output will be a probability distribution of scores, which can be easily classified by changing the `cutoff` variable.
 
@@ -376,7 +381,8 @@ cifar[["classes"]] <- cifar %>%
         return(classes)
     })
 ```
-## Split Data {#splitdata}
+
+## Split Data {#SplitData}
 
 The next task is to split the data in to a training and testing set. The reason for doing this is covered elsewhere (such sites such as [Wikipedia's Cross-Validation](https://en.wikipedia.org/wiki/Cross-validation_%28statistics%29), and [Google's Machine Learning Crash Course: Training and Test Sets Splitting Data](https://developers.google.com/machine-learning/crash-course/training-and-test-sets/splitting-data)).
 
@@ -451,11 +457,16 @@ Another method for checking that the data has been split properly, is to again r
 
 ```{r Check Splitting, eval=TRUE, echo=TRUE}
 for (name in c("trn_img","tst_img","trn_cls","tst_cls")) {
-    get_ObjectAttributes(get(name), name, if (name %in% c("trn_cls","tst_cls")) TRUE else FALSE) %>% cat 
+    get_ObjectAttributes(
+        get(name), 
+        name, 
+        if (name %in% c("trn_cls","tst_cls")) TRUE else FALSE
+    ) %>% 
+        cat
 }
 ```
 
-## Reshape Data {#reshapedata}
+## Reshape Data {#ReshapeData}
 
 For the first `input` layer of our Neural Network, we want to be a single dimension of nodes. Therefore, it is necessary to reshape the data from a 4-Dimensional array in to a 2-Dimensional array. This can be done quite easily with the `array()` function, as it has the `dim=` argument which can be used to specify the dimensions required.
 
@@ -464,13 +475,13 @@ The desired matrix size should have each _image_ in a new row, and each _pixel_ 
 ```{r Reshape Data, eval=TRUE, echo=TRUE}
 # Reshape data
 trn_img %<>% array(dim=c(
-    dim(.) %>% extract(1), 
-    dim(.) %>% extract(2:4) %>% prod() 
+    dim(.) %>% extract(1),
+    dim(.) %>% extract(2:4) %>% prod()
 ))
 
 tst_img %<>% array(dim=c(
-    dim(.)[1], 
-    dim(.)[2:4] %>% prod() 
+    dim(.) %>% extract(1),
+    dim(.) %>% extract(2:4) %>% prod()
 ))
 
 trn_cls %<>% array(dim=c(
@@ -492,7 +503,7 @@ for (name in c("trn_img","tst_img","trn_cls","tst_cls")) {
 }
 ```
 
-## Standardise Data {#standardisedata}
+## Standardise Data {#StandardiseData}
 
 The final step to preparing the data is to standardise the data so that all the elements are between `0` and `1`. The reason for this is to prevent exploding and vanishing gradients in later steps, as the Neural Network will try to fit to all the peaks and troughs which is caused from having the data in a `0` to `255` value range.
 
@@ -507,9 +518,9 @@ tst_img <- tst_img/255
 
 The data is now ready for the network. Next step is to build the network.
 
-# Instantiate the Network {#instantiatenetwork}
+# Instantiate the Network {#InstantiateNetwork}
 
-## Set the Architecture
+## Set the Architecture {#SetArchitecture}
 
 Some quick notes on what the Network will _actually_ be:
 
@@ -534,12 +545,16 @@ Some quick notes on what the Network will _actually_ be:
     * `back_wgts` : Gradient of the Weights matrix. Aka `dW`. Also the result of back-prop. 
     * `back_bias` : Gradient of the Bias vector. Aka `db`. Also the result of back-prop. 
 
-### Set the function
+### Set the Instantiation Function {#SetInstantiationFunction}
 
 For the below code chunk, the function `set_InstantiateNetwork()` is defined. It only has three input arguments, which specify the number of nodes to be used in each layer. Based on this information, the model will be instantiated and returned, ready for initialisation, in the next step.
 
-```{r Instantiate Network Definition, eval=FALSE, echo=TRUE}
-set_InstantiateNetwork <- function(input=50, hidden=c(30,20,10), output=1) {
+```{r Model Function: Set Instantiate Network, eval=FALSE, echo=TRUE}
+set_InstantiateNetwork <- function(
+    input=50, 
+    hidden=c(30,20,10), 
+    output=1
+    ) {
 
     # Set up
     model = list()
@@ -571,12 +586,12 @@ set_InstantiateNetwork <- function(input=50, hidden=c(30,20,10), output=1) {
         
         # Set nodes
         if (layer=="input") {
-            model[[layer]][["nodz"]] = input
+            model[[layer]][["nodz"]] <- input
         } else if (layer=="output") {
-            model[[layer]][["nodz"]] = output
+            model[[layer]][["nodz"]] <- output
         } else {
             layer_index = layer %>% as.numeric()
-            model[[layer]][["nodz"]] = hidden[layer_index]
+            model[[layer]][["nodz"]] <- hidden[layer_index]
         }
         
     }
@@ -586,7 +601,7 @@ set_InstantiateNetwork <- function(input=50, hidden=c(30,20,10), output=1) {
 }
 ```
 
-### Create the Network
+### Create the Network {#CreateNetwork}
 
 The below code chunk instantiates the network. The model will be set up with the following number of nodes in each layer:
 
@@ -602,13 +617,15 @@ network_model <- set_InstantiateNetwork(
 )
 ```
 
-### Visualise the Network
+### Visualise the Network {#VisualiseNetwork}
 
 There is a very good website available which allows Neural Networks to be visualised: [http://alexlenail.me/NN-SVG/AlexNet.html](http://alexlenail.me/NN-SVG/AlexNet.html). The below image is a representation of the network that has just been created.
 
+Further visualisation can be conducted once the network is fully initialised and forward propagated. See section [Check Shapes](#CheckShapes) for more details
+
 ![*Figure 1: Network Architecture*](./Images/Network Architecture.png)
 
-# Initialise the Network {#initialisenetwork}
+# Initialise the Network {#InitialiseNetwork}
 
 There are four steps to initialising the network:
 
@@ -617,7 +634,7 @@ There are four steps to initialising the network:
 1. Set the Model Initialisation function
 1. Run the Initialisation
 
-## Weight Initialisation
+## Weight Initialisation {#WeightInitialisation}
 
 At it's core, weight initialisation is simply generating a random normal number (with $\mu=0$ and $\sigma=1$). However, by only using this randomly generated number, the model gradients are found to be exploding or vanishing when attempting to train deeper neural networks. Therefore, these weights need to be scaled after they are initialised, in order to be robust enough to continue to be trained at deeper layers.
 
@@ -627,7 +644,7 @@ There are many algorithms that can be used for weight initialisation. Two of the
 * [Understanding the difficulty of training deep feedforward neural networks](http://proceedings.mlr.press/v9/glorot10a/glorot10a.pdf)
 * [Surpassing Human-Level Performance on ImageNet Classification](https://arxiv.org/pdf/1502.01852.pdf)
 
-### Xavier Algorithm
+### Xavier Algorithm {#XavierAlgorithm}
 
 The equation for the Xavier initialisation is:
 
@@ -639,7 +656,7 @@ Where:
 * $n_i$ is the number of nodes coming in to this layer. Also known as "fan-in".
 * $n_{i+1}$ is the number of nodes going out of this layer. Also known as "fan-out".
 
-### He Algorithm
+### He Algorithm {#HeAlgorithm}
 
 The equation for the He initialisation is:
 
@@ -651,11 +668,11 @@ Where:
 
 * $n_i$ is the number of nodes coming in to this layer.
 
-### The Functions
+### Initialisation Functions {#InitialisationFunctions}
 
 For programmatic purposes, these functions are written with the `order` value as part of the function arguments. This means that the order of magnitude of the equation can be altered at a later stage and used as a hyperparameter.
 
-```{r Xavier Initialisation, eval=TRUE, echo=TRUE}
+```{r Model Function: Let Initialise Xavier, eval=FALSE, echo=TRUE}
 let_InitialiseXavier <- function(nodes_in, nodes_out, order=6) {
     
     # Do work
@@ -668,7 +685,7 @@ let_InitialiseXavier <- function(nodes_in, nodes_out, order=6) {
 }
 ```
 
-```{r He Initialisation, eval=TRUE, echo=TRUE}
+```{r Model Function: Let Initialise He, eval=FALSE, echo=TRUE}
 let_InitialiseHe <- function(nodes_in, nodes_out, order=2) {
     
     # Do work
@@ -681,7 +698,7 @@ let_InitialiseHe <- function(nodes_in, nodes_out, order=2) {
 }
 ```
 
-## Layer Initialisation
+## Layer Initialisation {#LayerInitialisation}
 
 The next step is to construct a function that will initialise all the relevant aspects of an individual layer. This step is important because it is where the weight matrices are created, and these must be constructed in a certain manner so as to ensure that the dimensions allow successful forward propagation.
 
@@ -718,12 +735,13 @@ In order to achieve this, the function arguments used are for the function inclu
 1. The `initialisation_algorithm`, which is either the value `NA`, or the value `xavier` or `he` which is the value of the relevant algorithm.
 1. The `initialisation_order`, which is an integer value to be used as the numerator in the relevant algorithm.
 
-```{r Layer Initialisation, eval=TRUE, echo=TRUE}
-set_InitialiseLayer <- function(network_model, 
-                                layer_index, 
-                                initialisation_algorithm=NA, 
-                                initialisation_order=6
-                                ) {
+```{r Model Function: Set Initialise Layer, eval=FALSE, echo=TRUE}
+set_InitialiseLayer <- function(
+    network_model,
+    layer_index,
+    initialisation_algorithm=NA,
+    initialisation_order=6
+    ) {
     
     # Get layer names
     layer_prev <- names(network_model)[layer_index-1]
@@ -782,7 +800,7 @@ set_InitialiseLayer <- function(network_model,
 }
 ```
 
-## Model Initialisation
+## Model Initialisation {#ModelInitialisation}
 
 The purpose of the `set_InitialiseModel()` function is to loop through each layer in the `network_model` object, to initialise them in accordance with the parameters set within the model itself. This function will take the number of nodes (set by the `set_InstantiateNetwork()` function).
 
@@ -797,11 +815,12 @@ The function will take only three input parameters:
     * The order value to be used for the numerator of the equation.
     * This could be a numeric value, or the string `layers` which signifies that the order should be the number of hidden layers in the network.
 
-```{r Model Initialisation, eval=TRUE, echo=TRUE, warning=FALSE}
-set_InitialiseModel <- function(network_model, 
-                                initialisation_algorithm="xavier", 
-                                initialisation_order="layers"
-                                ) {
+```{r Model Function: Set Initialise Model, eval=FALSE, echo=TRUE, warning=FALSE}
+set_InitialiseModel <- function(
+    network_model, 
+    initialisation_algorithm="xavier", 
+    initialisation_order="layers"
+    ) {
     
     # Redefine 'initialisation_order'
     if (initialisation_order == "layers") {
@@ -828,7 +847,7 @@ set_InitialiseModel <- function(network_model,
 
 Notice, this function uses the user-defined function `get_CountOfElementsWithCondition()`. This function allows for the counting of the number of hidden layers in the model. The source code for the function can be found [here](https://github.com/chrimaho/VanillaNeuralNetworksInR/blob/master/Functions/functions.R).
 
-## Initialise the Network
+## Network Initialisation {#NetworkInitialisation}
 
 The below code chunk initialises the network using the function defined above. The method utilised is `%<>%`, which is defined in the `magrittr` package, which states that it is used to update a value on the left-hand side by first piping it into the first argument position on the right-hand side, and then assigning the result back to the object on the left hand side.
 
@@ -836,19 +855,21 @@ The below code chunk initialises the network using the function defined above. T
 network_model %<>% set_InitialiseModel()
 ```
 
-## Check the Model Parameters
+## Check the Model Parameters {#CheckModelParameters}
 
 For a quick sanity-check, the below code chunk checks for the number of parameters for the defined model. This again uses a custom function `get_ModelParametersCount()`, the definition for which can be found in the source code for this article (located [here](https://github.com/chrimaho/VanillaNeuralNetworksInR/blob/master/Functions/functions.R)).
 
-```{r}
+```{r Check Model Parameters, eval=TRUE, echo=TRUE}
 network_model %>% 
     get_ModelParametersCount() %>% 
     format(big.mark=",")
 ```
 
-# Forward Propogation
+There are over `320,000` parameters in this neural network. Every single one of these parameters will need to be trained, and each of them will have an influence on the final outcome. We will continue to walk through how this can be achieved in the following sections.
 
-## The Theory
+# Forward Propogation {#ForwardPropagation}
+
+## The Theory {#TheTheory}
 
 There is a very good website which outlines what actually happens during a matrix manipulation: [Matrix Manipulation](http://matrixmultiplication.xyz/).
 
@@ -867,9 +888,13 @@ The theory for the forward propagation method is as follows:
     1. The activation function is determined by the user during the time of the function being run. Can be the `relu` activation, `sigmoid` activation, or any of the other activation functions.
     1. The third matrix is the  activation matrix for the current layer.
 
-### Step One
+### Step One {#StepOne}
 
 To illustrate, the following matrices shows the first step of the forward propagation, using fictitious numbers.
+
+$$
+[Matrix_{input}] \times [Matrix_{weight}] = [Matrix_{layer}]
+$$
 
 $$
 \begin{bmatrix}
@@ -899,9 +924,9 @@ $$
 
 The below code shows how this process is implemented programatically.
 
-```{r, eval=TRUE, echo=TRUE}
+```{r Run Step One of Matrix Algebra, eval=TRUE, echo=TRUE}
 # Declare First matrix
-mat_a <- matrix(
+matrix_input <- matrix(
     data=1:24, 
     nrow=8, 
     ncol=3, 
@@ -909,7 +934,7 @@ mat_a <- matrix(
 )
 
 # Declare Weight matrix
-mat_b <- matrix(
+matrix_weight <- matrix(
     data=1:15, 
     nrow=3, 
     ncol=5, 
@@ -917,20 +942,24 @@ mat_b <- matrix(
 )
 
 # Apply matrix manipulation
-mat_c <- mat_a %*% mat_b
+matrix_layer <- matrix_input %*% matrix_weight
 ```
-```{r, eval=TRUE, echo=FALSE}
-writeLines("mat_a:")
-mat_a
-writeLines("\nmat_b:")
-mat_b
-writeLines("\nmat_c:")
-mat_c
+```{r Print Step One of Matrix Algebra, eval=TRUE, echo=FALSE}
+writeLines("matrix_input:")
+matrix_input
+writeLines("\nmatrix_weight:")
+matrix_weight
+writeLines("\nmatrix_layer:")
+matrix_layer
 ```
 
-### Step Two
+### Step Two {#StepTwo}
 
 The next diagram shows how the bias matrix is applied. As shown, each element in the bias matrix is applied horizontally to each element of the initial matrix. This diagram shows how it works.
+
+$$
+[Matrix_{layer}] + [Vector_{bias}] = [Matrix_{biased}]
+$$
 
 $$
 \begin{bmatrix}
@@ -965,25 +994,29 @@ $$
 
 The below code shows how this process is implemented programatically.
 
-```{r, eval=TRUE, echo=TRUE}
+```{r Run Step Two of Matrix Algebra, eval=TRUE, echo=TRUE}
 # Declare Bias matrix
-mat_d <- matrix(1:8, 8, 1)
+vector_bias <- matrix(1:8, 8, 1)
 
 # Apply Bias matrix
-mat_e <- sweep(mat_c, 1, mat_d, "+")
+matrix_biased <- sweep(matrix_layer, 1, vector_bias, "+")
 ```
-```{r, eval=TRUE, echo=FALSE}
-writeLines("mat_c:")
-mat_c
-writeLines("\nmat_d:")
-mat_d
-writeLines("\nmat_e:")
-mat_e
+```{r Print Step Two of Matrix Algebra, eval=TRUE, echo=FALSE}
+writeLines("matrix_layer:")
+matrix_layer
+writeLines("\nvector_bias:")
+vector_bias
+writeLines("\nmatrix_biased:")
+matrix_biased
 ```
 
-### Step Three
+### Step Three {#StepThree}
 
 The activation function is one which is defined at the time of running the function. The algorithm is applied to each element of the initial matrix. In this instance, a simple multiplication of the initial matrix is matrix.
+
+$$
+[Matrix_{biased}] \times Activation = [Matrix_{output}]
+$$
 
 $$
 \begin{bmatrix}
@@ -1009,22 +1042,22 @@ $$
 
 The below code shows how this process is implemented programatically.
 
-```{r, eval=TRUE, echo=TRUE}
+```{r Run Step Three of Matrix Algebra, eval=TRUE, echo=TRUE}
 # Apply Activation function
-mat_f <- mat_e*(0.01*mat_e)
+matrix_output <- matrix_biased * (0.01 * matrix_biased)
 ```
-```{r, eval=TRUE, echo=FALSE}
-writeLines("mat_e:")
-mat_e
-writeLines("\nmat_f:")
-mat_f
+```{r Print Step Three of Matrix Algebra, eval=TRUE, echo=FALSE}
+writeLines("matrix_biased:")
+matrix_biased
+writeLines("\nmatrix_output:")
+matrix_output
 ```
 
-## Linear Component
+## Linear Component {#LinearComponent}
 
 When combined together, the linear algebraic function is implemented in just three lines of code, as shown in the below code chunk in the `set_LinearForward()` function.
 
-```{r}
+```{r Model Function: Set Linear Forward, eval=FALSE, echo=TRUE}
 set_LinearForward <- function(inpt, wgts, bias) {
     
     # Perform matrix multiplication
@@ -1038,7 +1071,7 @@ set_LinearForward <- function(inpt, wgts, bias) {
 }
 ```
 
-## Non-Linear Component
+## Non-Linear Component {#NonLinearComponent}
 
 The real power of Neural Network comes from their Activation function. It is now the network is able to capture the non-linear aspects, and this is what emphasises their predictive power.
 
@@ -1061,7 +1094,7 @@ Each of the Activation functions are defined individually, and each only take on
     * [Searching for Activation Functions](https://arxiv.org/pdf/1710.05941.pdf)
     * [Implementing Swish Activation Function in Keras](https://www.bignerdranch.com/blog/implementing-swish-activation-function-in-keras/)
 
-```{r}
+```{r Model Function: Set Activation Sigmoid, eval=FALSE, echo=TRUE}
 let_ActivateSigmoid <- function(linr) {
     
     # Do work
@@ -1071,7 +1104,7 @@ let_ActivateSigmoid <- function(linr) {
     return(acti)
 }
 ```
-```{r}
+```{r Model Function: Set Activation Relu, eval=FALSE, echo=TRUE}
 let_ActivateRelu <- function(linr) {
     
     # Do work
@@ -1082,7 +1115,7 @@ let_ActivateRelu <- function(linr) {
     return(acti)
 }
 ```
-```{r}
+```{r Model Function: Set Activation Softmax, eval=FALSE, echo=TRUE}
 let_ActivateSoftmax <- function(linr) {
     
     # Do work
@@ -1094,7 +1127,7 @@ let_ActivateSoftmax <- function(linr) {
     return(acti)
 }
 ```
-```{r}
+```{r Model Function: Set Activation Swish, eval=FALSE, echo=TRUE}
 let_ActivateSwish <- function(linr, beta=0.1) {
     
     # Do work
@@ -1105,7 +1138,7 @@ let_ActivateSwish <- function(linr, beta=0.1) {
 }
 ```
 
-## Forward Prop
+## Set Forward Propagation Function {#SetForwardPropagationFunction}
 
 The `set_ForwardProp()` function pulls together all of the components mentioned above. It implements the following steps:
 
@@ -1130,18 +1163,19 @@ In order to implement this process, the function takes only four arguments:
 1. `activation_hidden`: The Activation function to be applied to the hidden layers.
 1. `activation_sigmoid`: The Activation function to be applied to the final (`output`) layer.
 
-```{r}
-set_ForwardProp <- function(network_model, 
-                            data_in, 
-                            activation_hidden="relu", 
-                            activation_final="sigmoid"
-                            ) {
+```{r Model Function: Set Foward Propagation, eval=FALSE, echo=TRUE}
+set_ForwardProp <- function(
+    network_model, 
+    data_in, 
+    activation_hidden="relu", 
+    activation_final="sigmoid"
+    ) {
     
     # Do work
-    for (index in 1:length(names(network_model))) {
+    for (index in network_model %>% names() %>% length() %>% 1:.) {
         
         # Define layer name
-        layr <- names(network_model)[index]
+        layr <- network_model %>% names() %>% extract(index)
         
         if (layr=="input") {
             
@@ -1153,19 +1187,21 @@ set_ForwardProp <- function(network_model,
             
             # Extract data
             prev <- names(network_model)[index-1]
-            inpt <- network_model[[prev]][["acti"]]
-            wgts <- network_model[[layr]][["wgts"]]
-            bias <- network_model[[layr]][["bias"]]
+            inpt <- network_model %>% extract2(prev) %>% extract2("acti")
+            wgts <- network_model %>% extract2(layr) %>% extract2("wgts")
+            bias <- network_model %>% extract2(layr) %>% extract2("bias")
             
             # Calculate
             linr <- set_LinearForward(inpt, wgts, bias)
             
             # Activate
             if (layr=="output") {
-                acti <- get(paste0("let_Activate",str_to_title(activation_final)))(linr)
+                func <- activation_final %>% str_to_title() %>% paste0("let_Activate", .) %>% get()
+                acti <- func(linr)
                 network_model[[layr]][["acti_func"]] <- activation_final
             } else {
-                acti <- get(paste0("let_Activate",str_to_title(activation_hidden)))(linr)
+                func <- activation_hidden %>% str_to_title() %>% paste0("let_Activate", .) %>% get()
+                acti <- func(linr)
                 network_model[[layr]][["acti_func"]] <- activation_hidden
             }
             
@@ -1180,32 +1216,44 @@ set_ForwardProp <- function(network_model,
     
     # Return
     return(network_model)
+    
 }
 ```
 
-## Run
+## Run Forward Propagation {#RunForwardPropagation}
 
 The last step of the Forward Propagation process is to actually run the function. In the below code chunk, the `tic()` and `toc()` functions are implemented to time how long a process takes to run.
 
-```{r}
+```{r Run Forward Propagation, eval=TRUE, echo=TRUE}
 tic()
-network_model <- set_ForwardProp(network_model, trn_img, "relu", "sigmoid")
+network_model %<>% set_ForwardProp(trn_img, "relu", "sigmoid")
 toc()
 ```
 
-As mentioned above in the [Split Data](#splitdata) section, the `trn_img` object is over `82 Mb` large. The entire end-to-end process for forward propagation took only `3 seconds` to run; which is quite impressive, and is a testament to the power of mathematics.
+As mentioned above in the [Split Data](#SplitData) section, the `trn_img` object is over `82 Mb` large. The entire end-to-end process for forward propagation took only `3 seconds` to run; which is quite impressive, and is a testament to the power of mathematics.
 
-# Calculate the Cost
+## Check Model Shapes {#CheckShapes}
+
+The Network can now be printed using the custom function `get_PrintNetwork()`. This function returns each layer in an individual box, containing key information like the relevant shapes of the matrices and the activation functions used. The source code for the function can be found [here](https://github.com/chrimaho/VanillaNeuralNetworksInR/blob/master/Functions/functions.R).
+
+```{r Visualise The Network, eval=TRUE, echo=TRUE}
+# Print the Network
+network_model %>% 
+    get_PrintNetwork() %>% 
+    cat()
+```
+
+# Calculate the Cost {#CalculateCost}
 
 Once the forward-propagation part has been completed, it's then necessary to get a measure for how wrong the model is. This will then be used to update the model parameters during the backward propagation steps.
 
-## Set Up
+## Set Cost Function {#SetUpCostCalculation}
 
 The first step is to write the functions to be used for getting the cost for the model. Ultimately, it does not matter how bad the results are for the first round of training; remember, the model was initialised with random numbers. What's important is that the cost functions should be determining a _single_ value for the cost of the network, and this single function will be what is used for the derivative functions to be used in the backwards propagation steps.
 
 Note here, that there is a very small epsilon value used (`epsi`), which effectively adjusts for a perfect prediction made by the model. The reason for this is not that we don't want the model to predict a perfect value, it's that we want the model to predict the probability of a perfect value. Furthermore, it's impossible to take a logarithmic value of a $0$, so therefore it's necessary to adjust this to be _just_ a little bit off-zero.
 
-```{r}
+```{r Model Function: Get Compute Cost, eval=FALSE, echo=TRUE}
 get_ComputeCost <- function(pred, true, epsi=1e-10) {
     
     # Get number of samples
@@ -1236,7 +1284,7 @@ get_ComputeCost <- function(pred, true, epsi=1e-10) {
 
 Then, the cost must be applied back on to the network. For this, the exact same value is applied to each layer of the network.
 
-```{r}
+```{r Model Function: Set Apply Cost, eval=FALSE, echo=TRUE}
 set_ApplyCost <- function(network_model, cost) {
     
     # Apply back to the model
@@ -1249,18 +1297,17 @@ set_ApplyCost <- function(network_model, cost) {
 }
 ```
 
-## Run the Cost Functions
+## Run the Cost Function {#RunCostFunction}
 
 The below code chunk runs the cost functions, utilising the functions defined above.
 
-```{r}
-network_model <- set_ApplyCost(
-    network_model, 
+```{r Run Apply Cost, eval=TRUE, echo=TRUE}
+network_model %<>% set_ApplyCost(
     get_ComputeCost(network_model[["output"]][["acti"]], trn_cls)
 )
 ```
 
-# Backward Propogation
+# Backward Propogation {#BackwardPropagation}
 
 The function of back-propagation is intended to take the cost of the model, and then differentiate each of the Weights and Biases matrices in the network to determine to what extent each and every single parameter in the network contributed to that final cost value. To do this, the process works backwards from the end to the start, following the following steps:
 
@@ -1271,11 +1318,11 @@ The function of back-propagation is intended to take the cost of the model, and 
 
 Each step in the back-propagation process requires calculus to derive the values, and the final function is implemented here. As this paper is not intended to show how to derive the equations, but more how to run the functions, the necessary algebraic steps are not included here.
 
-## Differentiate Cost
+## Differentiate Cost {#DifferentiateCost}
 
-As similar to the functions used to get the cost, the cost differential values are first calulated, then applied to each layer of the network.
+As similar to the functions used to get the cost, the cost differential values are first calculated, then applied to each layer of the network.
 
-```{r}
+```{r Model Function: Get Differentiate Cost, eval=FALSE, echo=TRUE}
 get_DifferentiateCost <- function(pred, true) {
     
     # Do work
@@ -1286,34 +1333,37 @@ get_DifferentiateCost <- function(pred, true) {
 }
 ```
 
-```{r}
+```{r Model Function: Set Apply Differentiate Cost, eval=FALSE, echo=TRUE}
 set_ApplyDifferentiateCost <- function(network_model, cost_differential) {
     
     # Do work
     for (layer in names(network_model)) {
         network_model[[layer]][["back_cost"]] <- cost_differential
         if (layer=="output") {
-            network_model[[layer]][["back_acti"]] <- network_model[[layer]][["back_cost"]] %>% t()
+            network_model[[layer]][["back_acti"]] <- network_model %>% 
+                extract2(layer) %>% 
+                extract2("back_cost") %>% 
+                t()
         }
     }
     
     # Return
     return(network_model)
+    
 }
 ```
 
-```{r}
-network_model <- set_ApplyDifferentiateCost(
-    network_model, 
+```{r Run and Apply Cost Differential, eval=TRUE, echo=FALSE}
+network_model %<>% set_ApplyDifferentiateCost(
     get_DifferentiateCost(network_model[["output"]][["acti"]],trn_cls)
 )
 ```
 
-## Differentiate Activation
+## Differentiate Activation {#DifferentiateActivations}
 
+As each of the activations have their own function, there is also a derivation of that function which can be calculated using calculus.
 
-
-```{r}
+```{r Model Function: Let Backward Activate Relu, eval=FALSE, echo=TRUE}
 let_BackwardActivateRelu <- function(diff_acti_curr, linr_curr) {
     
     # Do work
@@ -1324,7 +1374,7 @@ let_BackwardActivateRelu <- function(diff_acti_curr, linr_curr) {
     return(diff_linr_curr)
 }
 ```
-```{r}
+```{r Model Function: Let Backward Activate Sigmoid, eval=FALSE, echo=TRUE}
 let_BackwardActivateSigmoid <- function(diff_acti_curr, linr_curr) {
     
     # Do work
@@ -1336,9 +1386,13 @@ let_BackwardActivateSigmoid <- function(diff_acti_curr, linr_curr) {
 }
 ```
 
-## Differentiate Linear
+## Differentiate Linear {#DifferentiateLinear}
 
-```{r}
+Having had defined all this so far, the next step is to combine in to one single function, which can be used once per layer, which runs the necessary back-propagation differentiation functions.
+
+Notice here that the output is actually a list of three elements. This is unique to `R`, as this language can only ever output a single element for functions; as compared to `python` which is able to return multiple elements from each function.
+
+```{r Model Function: Get Differentiate Linear, eval=FALSE, echo=TRUE}
 get_DifferentiateLinear <- function(back_linr_curr, acti_prev, wgts, bias) {
     
     # get number of samples
@@ -1362,21 +1416,45 @@ get_DifferentiateLinear <- function(back_linr_curr, acti_prev, wgts, bias) {
     
     # Return
     return(list_linr)
+    
 }
 ```
 
-## Run Backward Propogation
+## Run Backward Propogation {#RunBackwardPropagation}
 
-### Set
+After having defined the differentiation functions, next is necessary to combine these individual functions in to a single, combined, which can be run once per layer.
 
-```{r}
+First, we will set up the function, and secondly we will run it.
+
+### Set Backward Propagation Function {#SetBackwardPropagationFunction}
+
+The backward propagation function to be defined (`set_BackwardProp()`) must be designed to run through the following steps:
+
+1. Run through each layer in _reverse_ direction. This is necessary because, quite logically, the backward propagation function needs to be run in a backwards direction.
+1. Extract the layer name
+1. Skip the `input` layer. Again, quite logical, because this layer is at the beginning of the network, and does not need to be back-propagated.
+1. Extract the name of the previous layer.
+1. Extract the relevant matrices to be used for subsequent calculations.
+1. Extract the relevant activation function for this particular layer.
+1. Set up some empty matrices, which will house the relevant differentiated matrices.
+1. Differentiate the `activation` matrix of the _current_ layer
+1. Differentiate the `linear` matrices, including:
+
+    1. `weight` matrix of the _current_ layer.
+    1. `bias` matrix of the _current_ layer.
+    1. `activation` matrix of the _previous_ layer.
+    
+1. Apply information back in to the relevant places in the `network_model`.
+1. Return the updated `network_model`.
+
+```{r Model function: Set Backward Propagation, eval=FALSE, echo=TRUE}
 set_BackwardProp <- function(network_model) {
     
     # Loop through each layer in reverse order
-    for (layr_indx in network_model %>% names %>% length %>% 1:. %>% rev) {
+    for (layr_indx in network_model %>% names() %>% length() %>% 1:. %>% rev) {
         
         # Get the layer name
-        layr_curr <- network_model %>% names %>% extract(layr_indx)
+        layr_curr <- network_model %>% names() %>% extract(layr_indx)
         
         # Skip the 'input' layer
         if (layr_curr == "input") next
@@ -1385,14 +1463,14 @@ set_BackwardProp <- function(network_model) {
         layr_prev <- network_model %>% names %>% extract(layr_indx-1)
         
         # Set up the existing matrices
-        linr_curr <- network_model[[layr_curr]][["linr"]]
-        wgts_curr <- network_model[[layr_curr]][["wgts"]]
-        bias_curr <- network_model[[layr_curr]][["bias"]]
-        acti_prev <- network_model[[layr_prev]][["acti"]]
-        diff_acti_curr <- network_model[[layr_curr]][["back_acti"]]
+        linr_curr <- network_model %>% extract2(layr_curr) %>% extract2("linr")
+        wgts_curr <- network_model %>% extract2(layr_curr) %>% extract2("wgts")
+        bias_curr <- network_model %>% extract2(layr_curr) %>% extract2("bias")
+        acti_prev <- network_model %>% extract2(layr_prev) %>% extract2("acti")
+        diff_acti_curr <- network_model %>% extract2(layr_curr) %>% extract2("back_acti")
         
         # Get the activation function
-        acti_func_back <- network_model[[layr_curr]][["acti_func"]] %>% 
+        acti_func_back <- network_model %>% extract2(layr_curr) %>% extract2("acti_func") %>%
             str_to_title %>% 
             paste0("let_BackwardActivate", .)
         
@@ -1412,9 +1490,9 @@ set_BackwardProp <- function(network_model) {
             wgts=wgts_curr,
             bias=bias_curr
         )
-        diff_acti_prev <- list_linr[[1]]
-        diff_wgts_curr <- list_linr[[2]]
-        diff_bias_curr <- list_linr[[3]]
+        diff_acti_prev <- list_linr %>% extract2(1)
+        diff_wgts_curr <- list_linr %>% extract2(2)
+        diff_bias_curr <- list_linr %>% extract2(3)
         
         # Apply back to model
         network_model[[layr_prev]][["back_acti"]] <- diff_acti_prev
@@ -1426,53 +1504,52 @@ set_BackwardProp <- function(network_model) {
     
     # Return
     return(network_model)
+    
 }
 ```
 
-### Run
+### Run Backward Propagation Function {#RunBackwardPropagationFunction}
 
-```{r}
+Having defined this function, the next step is to run the function. The below code chunk is wrapped with the `tic()` and `toc()` functions, in order to determine how mucht time it took for the function to run.
+
+```{r Run Backward Propagation, eval=TRUE, echo=FALSE}
 tic()
-network_model <- set_BackwardProp(network_model)
+network_model %<>% set_BackwardProp()
 toc()
 ```
 
-# Update Model Parameters
+As shown, it took approximately 7 seconds to run this function. This is quite impressive, considering that there are over 320,000 parameters to be updated (see [Check Model Parameters](#CheckModelParameters) section).
 
-```{r}
+# Update Model Parameters {#UpdateModelParameters}
+
+After the model parameters have been differenced, it's then necessary to update the relevant parameters of the network (the weights and biases) before re-training the network again by re-running the forward propagation function.
+
+The method used to update these parameters is called [Stochastic Gradient Descent](https://en.wikipedia.org/wiki/Stochastic_gradient_descent). For more information, see [Stochastic Gradient Learning in Neural Networks](https://leon.bottou.org/publications/pdf/nimes-1991.pdf) or [Backpropagation and Stochastic Gradient Descent Method](https://www.sciencedirect.com/science/article/abs/pii/092523129390006O).
+
+The process is quite simple:
+
+1. Specify a given _learning rate_ between `0` and `1` (usually very very small, for example `0.001`).
+1. Take the differenced _weight_ and _bias_ matrices, and multiply by the _learning rate_ in a **negative** direction.
+1. Add the updated differenced _weight_ and _bias_ matrices, and add to the original _weight_ and _bias_ matrix.
+1. Repeat this process layer-by-layer.
+
+## Set the Update Model Function {#SetUpdateModelFunction}
+
+To set the function for updating the model parameters, the following steps are used:
+
+1. Specify the `learning_rate` as an argument for the function.
+1. Loop through each layer in the network in a _forward_ direction.
+1. Extract the layer name.
+1. Skip the `input` layer (as it does not need updating).
+1. Define the gradient steps for the `back_wgts` and `back_bias` matrices.
+1. Apply the gradient steps to the original `wgts` a `bias` matrices.
+1. Return the updated mode.
+
+```{r Model Function: Set Update Model, eval=FALSE, echo=TRUE}
 set_UpdateModel <- function(network_model, learning_rate=0.001) {
-    #' @title Update the Model
-    #' @description Update the `network_model` by taking a number of 'steps', which is effectively updating the weights and biases by multiplying the matrices by a given learning rate (`learning_rate`).
-    #' @note The `grad_step_weights` element is transposed to ensure it is in the correct orientation.
-    #' @param network_model `list`. The network model to be updated.
-    #' @param learning_rate `number`. The learning rate that the parameters should be updated by. It should be a small decimal number. Default value `0.001`.
-    #' @return The same `network_model`, after having the parameters (`wgts` & `bias`) updated.
-    #' @author chrimaho
-    #' @examples
-    #' # Works
-    #' set_UpdateModel(
-    #'     network_model,
-    #'     learning_rate=0.001
-    #' )
-    
-    # Packages
-    require(assertthat)
-    require(dplyr)
-    
-    # Validations
-    assert_that(network_model %>% is.list, msg="'network_model' must be type 'list'.")
-    assert_that(learning_rate %>% is.number, msg="'learning_rate' must be type 'number'.")
-    assert_that(between(learning_rate, 0, 1), msg="'learning_rate' must be between '0' and '1'.")
-    assert_that(network_model %>% names %>% extract(1) == "input", msg="The first layer of 'network_model' must be 'input'.")
-    assert_that(network_model %>% names %>% rev %>% extract(1) == "output", msg="The last layer of 'network_model' must be 'output'.")
-    for (name in network_model %>% names) {
-        if (!name %in% c("input","output")) {
-            assert_that(name %>% as.numeric %>% is.integer, msg="Each hidden layer in 'network_model' must be an integer value.")
-        }
-    }
     
     # Do work
-    for (index in network_model %>% names %>% length %>% 1:.) {
+    for (index in network_model %>% names() %>% length() %>% 1:.) {
         
         # Get layer name
         layr <- network_model %>% names %>% extract(index)
@@ -1492,192 +1569,76 @@ set_UpdateModel <- function(network_model, learning_rate=0.001) {
     
     # Return
     return(network_model)
+    
 }
 ```
 
-```{r}
-network_model <- set_UpdateModel(network_model, 0.01)
+## Run the Update Model Function {#RunUpdateModelFunction}
+
+Having defined the function, then we run the model our network.
+
+```{r Run Update Model, eval=TRUE, echo=TRUE}
+network_model %<>% set_UpdateModel(0.01)
 ```
 
-# Run the model
+# Run the Model End-to-End {#RunModelEndToEnd}
 
-## Set Up
+Now, it's time to bring it all together. Running the model end-to-end essentially means:
 
-```{r}
-plt_PlotLearningCurve <- function(model_cost, 
-                                  input_nodes, hidden_nodes, output_nodes, 
-                                  initialisation_algorithm, initialisation_order, 
-                                  activation_hidden, activation_final, 
-                                  epochs, learning_rate
-                                  ) {
-    #' @title Plot Model Learning Curve
-    #' @description Plot model learning curve.
-    #' @note Add a note for the developer.
-    #' @param model_cost `numeric` `vector`. The learning curve for the model.
-    #' @param input_nodes `number`. The number of nodes in the input layer.
-    #' @param hidden_nodes `numeric` `vector`.
-    #' @param output_nodes `number`.
-    #' @param initialisation_algorithm `string`.
-    #' @param initialisation_order `string`.
-    #' @param activation_hidden `string`.
-    #' @param activation_final `string`.
-    #' @param epochs `number`.
-    #' @param learning_rate `number`.
-    #' @return Nothing is being returned.
-    #' @seealso 
-    #' @author chrimaho
-    #' @examples
-    #' # Works
-    #' plt_PlotLearningCurve(
-    #'     model_cost,
-    #'     input_nodes
-    #' )
-    
-    # Packages
-    require(assertthat)
-    require(dplyr)
-    
-    # Validations
-    assert_that(model_cost %>% {is.vector(.) & is.numeric(.)}, msg="'model_cost' must be type 'vector' and 'numeric'.")
-    assert_that(input_nodes %>% is.number, msg="'input_nodes' must be type 'number'.")
-    assert_that(hidden_nodes %>% {is.vector(.) & is.numeric(.)}, msg="'hidden_nodes' must be type 'vector' and 'number'.")
-    assert_that(output_nodes %>% is.number, msg="'output_nodes' must be type 'number'.")
-    assert_that(initialisation_algorithm %>% is.string, msg="'initialisation_algorithm' must be type 'string'.")
-    assert_that(initialisation_order %>% {is.string(.) | is.number(.)}, msg="'initialisation_order' must be type 'number'.")
-    assert_that(activation_hidden %>% is.string, msg="'activation_hidden' must be type 'string'.")
-    assert_that(activation_final %>% is.string, msg="'activation_final' must be type 'string'.")
-    assert_that(epochs %>% is.number, msg="'epochs' must be type 'number'.")
-    assert_that(learning_rate %>% is.number, msg="'learning_rate' must be type 'number'.")
-    
-    # Do work
-    plot <- model_cost %>% 
-        data.frame(cost=.) %>% 
-        rowid_to_column("epoch") %>% 
-        ggplot() +
-        geom_line(aes(epoch,cost)) +
-        coord_cartesian(ylim=c(0,1)) +
-        labs(
-            title=paste0("Learning Curve for Neural Network"),
-            subtitle=paste0(
-                "Inpt: '", input_nodes, "',  Hidd: '", paste0(hidden_nodes, collapse=","), "',  Outp: '", output_nodes, "'\n",
-                "Init Alg: '", initialisation_algorithm, "',  Init Ord: '", initialisation_order, "'\n",
-                "Acti Hid: '", activation_hidden, "',  Acti Out: '", activation_final, "'\n",
-                "Epochs: '", epochs, "',  Lrn Rate: '", learning_rate, "'\n"
-            ),
-            x="Epoch",
-            y="Cost"
-        )
-    
-    # Return
-    return(plot)
-}
-```
+1. Applying forward propagation.
+1. Calculate the cost.
+1. Run backward propagation.
+1. Update the model parameters.
+1. Repeat...
 
-```{r}
-get_BatchIndexes <- function(vector, batches=get_Modulus(length(vector))[4], batch=1, seed=sample(1:100,1)) {
-    #' @title Get the batches for a given vector
-    #' @description Add function description.
-    #' @note Add a note for the developer.
-    #' @param vector `vector`. The vector to be batched up.
-    #' @param batches `integer`. The number of batches required. Default value `get_Modulus(dim(vector)[1])[4]`.
-    #' @param batch `number`. The batch number required. Default value `1`.
-    #' @return A vector with the same length as `vector` comprising of logical values where `TRUE` is the index for the given `batch` and `FALSE` is everything else.
-    #' @seealso 
-    #' @author chrimaho
-    #' @examples
-    #' # Works
-    #' get_VectorBatches(
-    #'     vector=NA,
-    #'     batches=get_Modulus(dim(vector)[1])[7]
-    #' )
-    
-    # Packages
-    require(assertthat)
-    require(dplyr)
-    require(groupdata2)
-    
-    # Validations
-    assert_that(vector %>% is.vector, msg="'vector' must be type 'vector'.")
-    assert_that(batches %>% is.integer, msg="'batches' must be type 'integer'.")
-    assert_that(batch %>% is.integer, msg="'batch' must be type 'integer'.")
-    assert_that(batch <= batches, msg="The required 'batch' must be less than, or equal to, the number of 'batches'.")
-    
-    set.seed(seed)
-    
-    # Do work and return
-    vector %>% 
-        data.frame(dat=.) %>% 
-        fold(batches) %>% 
-        ungroup() %>% 
-        rename("folds"=2) %>%
-        mutate(bat=ifelse(folds==batch,TRUE,FALSE)) %>% 
-        select(bat) %>% 
-        pull %>% 
-        return()
-}
-```
+Each time this is repeated is called an _Epoch_. It is quite typical for networks to be updated over many many Epochs. Sometimes hundreds, sometimes thousands of Epochs; the exact number of Epochs to run is a discretionary decision by the Data Scientist, based on numerous variables.
 
-```{r}
-let_TrainModel <- function(x_train, y_train,
-                           input_nodes=dim(x_train)[2], hidden_nodes=c(100, 50, 10), output_nodes=1,
-                           initialisation_algorithm="xavier", initialisation_order="layers",
-                           activation_hidden="relu", activation_final="sigmoid",
-                           batches=get_Modulus(dim(x_train)[1])[4], epochs=500, learning_rate=0.001,
-                           verbosity=NA, print_learning_curve=TRUE
-                           ) {
-    #' @title Train network model
-    #' @description Parse in the relevant parameters, and then instantiate, initialise, forward propagate, assess, differentiate, backward propagate and update model. Then repeat this process `epoch` number of times.
-    #' @note The model will be re-created every time this function is run.
-    #' @param x_train `array`. The 4-D array of images for training.
-    #' @param y_train `array`. The 2-D array of labels for each image.
-    #' @param input_nodes `integer`.
-    #' @param hidden_nodes `vector` of `integer`s.
-    #' @param output_nodes `integer`.
-    #' @param initialisation_algorithm `string` or `NA`.
-    #' @param initialisation_order `integer` or `string`.
-    #' @param activation_hidden `string`.
-    #' @param activation_final `string`.
-    #' @param batches `integer`.
-    #' @param epochs `integer`.
-    #' @param learning_rate `number`.
-    #' @param verbosity `integer` or `NA`.
-    #' @param print_learning_curve `logical`.
-    #' @return A list containing the `results`, and the final trained `network_model`.
-    #' @author chrimaho
-    #' @examples
-    #' # Works
-    #' let_TrainModel(
-    #'     x_train,
-    #'     y_train
-    #' )
-    
-    # Packages
-    require(assertthat)
-    require(dplyr)
-    require(magrittr)
-    
-    # Validations
-    assert_that(x_train %>% is.array, msg="'x_train' must be type 'array'.")
-    assert_that(y_train %>% is.array, msg="'y_train' must be type 'array'.")
-    assert_that(input_nodes %>% is.integer, msg="'input_nodes' must be type 'integer'.")
-    assert_that(hidden_nodes %>% is.vector, msg="'hidden_nodes' must be type 'vector'.")
-    assert_that(hidden_nodes %>% is.integer %>% all, msg="All elements of 'hidden_nodes' must be integers.")
-    assert_that((hidden_nodes > 0) %>% all, msg="All elements of 'hidden_nodes' must be greater than '0'.")
-    assert_that(output_nodes %>% is.integer, msg="'input' must be type 'integer'.")
-    assert_that(initialisation_algorithm %>% {is.string(.) | is.na(.)}, msg="'initialisation_algorithm' must be type 'string' or value 'NA'.")
-    assert_that(initialisation_algorithm %in% c("xavier","he",NA), msg="'initialisation_algorithm' must be one of 'xavier', 'he', or 'NA'.")
-    assert_that(initialisation_order %>% {is.integer(.) | is.string(.)}, msg="'initialisation_order' must be type 'integer' or 'string'.")
-    assert_that(is.string(activation_hidden), msg="'activation_hidden' must be type 'string'.")
-    assert_that(is.string(activation_final), msg="'activation_final' must be type 'string'.")
-    assert_that(activation_hidden %in% c("sigmoid","relu","softmax","swish"), msg="'activation_hidden' must be one of: 'sigmoid', 'relu', 'softmax', or 'swish'.")
-    assert_that(batches %>% is.integer, msg="'batches' must be type 'integer'.")
-    assert_that(dim(x_train)[1] %% batches == 0, msg="The number of images in 'x_train' should be equally divisible by 'batches'. Try another value for 'batches' instead. Suggested: {}." %>% str_Format(get_Modulus(dim(x_train)[1])[4]))
-    assert_that(epochs %>% is.integer, msg="'epochs' must be type 'integer'.")
-    assert_that(learning_rate %>% is.number, msg="'learning_rate' must be type 'number'.")
-    assert_that(between(learning_rate, 0, 1), msg="'learning_rate' must be between '0' and '1'.")
-    assert_that(activation_final %in% c("sigmoid","relu","softmax","swish"), msg="'activation_final' must be one of: 'sigmoid', 'relu', 'softmax', or 'swish'.")
-    assert_that(verbosity %>% {is.integer(.) | is.na(.)}, msg="'verbosity' must be type 'integer' or value 'NA'.")
-    assert_that(print_learning_curve %>% is.logical, msg="'print_learning_curve' must be type 'logical'.")
+There is one additional step to be added in here, and that is _batching_ the data. For this, we can consider within each Epoch, the data will be batched up in to equally divisible groups, and used for subsequent processing. In this instance, the model parameters will be updated after each batch. And when the full amount of data has been run through the model in it's entirety, this is then considered one Epoch.
+
+## Set up the Train Model Function {#SetTrainModel}
+
+To illustrate this programmitically, the following function is written.
+
+Notice here, that there are many custom functions included (the source code for each of which can be found [here](https://github.com/chrimaho/VanillaNeuralNetworksInR/blob/master/Functions/functions.R)). These functions include:
+
+- `get_Modulus()`
+- `get_BatchIndexes()`
+- `get_VerbosityValues()`
+- `get_TimeDifference()`
+- `plt_PlotLearningCurve()`
+
+The steps for this function include:
+
+1. Begin the timer.
+1. Declare what information will be returned.
+1. Instantiate the network.
+1. Initialise the network.
+1. Loop through each Epoch.
+1. Loop through each batch.
+1. Subset the data for this particular batch.
+1. Run forward propagation.
+1. Calculate the cost.
+1. Apply the cost to the network.
+1. Differentiate the cost.
+1. Run backward propagation. 
+1. Update the model parameters.
+1. Run through next batch. 
+1. Save the overall cost at the end of the Epoch.
+1. Print the update at the relevant Epoch number (from the `verbosity` argument)
+1. Run through next Epoch.
+1. Save the updated network.
+1. Print the learning curve.
+1. Return the output.
+
+```{r Model Function: Let Train Model, eval=FALSE, echo=TRUE}
+let_TrainModel <- function(
+    x_train, y_train,
+    input_nodes=dim(x_train)[2], hidden_nodes=c(100, 50, 10), output_nodes=1,
+    initialisation_algorithm="xavier", initialisation_order="layers",
+    activation_hidden="relu", activation_final="sigmoid",
+    batches=get_Modulus(dim(x_train)[1])[4], epochs=500, learning_rate=0.001,
+    verbosity=NA, print_learning_curve=TRUE
+    ) {
     
     # Begin the timer
     time_begin <- Sys.time()
@@ -1715,8 +1676,8 @@ let_TrainModel <- function(x_train, y_train,
             batch_indexes <- get_BatchIndexes(
                 vector=1:dim(x_train)[1], 
                 batches=batches, 
-                batch=batch 
-                # seed=1234
+                batch=batch,
+                seed=1234
             )
             
             # Set data
@@ -1725,29 +1686,29 @@ let_TrainModel <- function(x_train, y_train,
             
             # Forward Prop
             network_model <- set_ForwardProp(
-                network_model=network_model, 
-                data_in=x_train_batch, 
-                activation_hidden=activation_hidden, 
-                activation_final=activation_final
+                network_model = network_model, 
+                data_in = x_train_batch, 
+                activation_hidden = activation_hidden, 
+                activation_final = activation_final
             )
             
             # Get cost
             cost <- get_ComputeCost(
-                pred=network_model[["output"]][["acti"]], 
-                true=y_train_batch, 
-                epsi=1e-10
+                pred = network_model[["output"]][["acti"]], 
+                true = y_train_batch, 
+                epsi = 1e-10
             )
             
             # Apply cost
             network_model <- set_ApplyCost(
-                network_model=network_model, 
-                cost=cost
+                network_model = network_model, 
+                cost = cost
             )
             
             # Differentiate cost
             network_model <- set_ApplyDifferentiateCost(
-                network_model=network_model, 
-                get_DifferentiateCost(network_model[["output"]][["acti"]], y_train_batch)
+                network_model = network_model, 
+                cost_differential = get_DifferentiateCost(network_model[["output"]][["acti"]], y_train_batch)
             )
             
             # Backprop
@@ -1755,8 +1716,8 @@ let_TrainModel <- function(x_train, y_train,
             
             # Update parameters
             network_model <- set_UpdateModel(
-                network_model=network_model, 
-                learning_rate=learning_rate
+                network_model = network_model, 
+                learning_rate = learning_rate
             )
             
         }
@@ -1766,11 +1727,19 @@ let_TrainModel <- function(x_train, y_train,
         
         # Print update
         if (!is.na(verbosity)) {
-            if (epoch %% verbosity == 0) {
+            if (epoch %in% get_VerbosityValues(epochs, verbosity)){
                 if (epoch == verbosity) {
-                    cat("Learning rate: {}\n" %>% str_Format(learning_rate))
+                    "Learning rate: {}\n" %>% 
+                        str_Format(learning_rate) %>% 
+                        cat()
                 }
-                cat("Epoch {}, Cost: {}, Time: {}\n" %>% str_Format(epoch, cost, get_TimeDifference(time_begin)))
+                "Epoch {}, Cost: {}, Time: {}\n" %>% 
+                    str_Format(
+                        epoch, 
+                        round(cost, 5), 
+                        get_TimeDifference(time_begin)
+                    ) %>% 
+                    cat()
             }
         }
         
@@ -1784,12 +1753,15 @@ let_TrainModel <- function(x_train, y_train,
         
         tryCatch(
             expr={
-                output[["results"]][["cost"]] %>% 
+                output %>% 
+                    extract2("results") %>% 
+                    extract2("cost") %>% 
                     plt_PlotLearningCurve(
                         input_nodes=input_nodes, hidden_nodes=hidden_nodes, output_nodes=output_nodes,
                         initialisation_algorithm=initialisation_algorithm, initialisation_order=initialisation_order,
                         activation_hidden=activation_hidden, activation_final=activation_final,
-                        epochs=epochs, learning_rate=learning_rate
+                        epochs=epochs, learning_rate=learning_rate, verbosity=verbosity,
+                        run_time=get_TimeDifference(time_begin)
                     ) %>% 
                     print()
             },
@@ -1815,42 +1787,73 @@ let_TrainModel <- function(x_train, y_train,
 }
 ```
 
-```{r}
-get_Prediction <- function(x_test, y_test, network_model, threshold=0.5) {
-    #' @title Get Prediction from Model
-    #' @description Use the `network_model` to forward-propagate `x_test` to create a set of predictions. Then, compare these predictions with `y_test`.
-    #' @note Add a note for the developer.
-    #' @param x_test `array`. A 4-D array of images.
-    #' @param y_test `array`. A 2-D array of labels.
-    #' @param network_model `list`. The trained network_model.
-    #' @param threshold `number`. A single value between `0` & `1` that is the threshold for the predicted probabilities.
-    #' @return A `data.frame` with three columns: 1) `probs`: The Probability value of each of the labels, and is the same length as `y_test`; 2) `truth`: The true labels, the exact same vector as `y_test`; 3) `class`: The class of values, defined at a given cutoff value.
-    #' @author chrimaho
-    #' @examples
-    #' # Works
-    #' get_Prediction(
-    #'     x_test=NA,
-    #'     y_test=NA
-    #' )
-    
-    # Packages
-    require(assertthat)
-    require(dplyr)
-    require(magrittr)
-    
-    # Validations
-    assert_that(x_test %>% is.array, msg="'x_test' must be type 'array'.")
-    assert_that(y_test %>% is.array, msg="'y_test' must be type 'array'.")
-    assert_that(threshold %>% is.number, msg="'threshold' must be type 'number'.")
-    assert_that(between(threshold, 0, 1), msg="'threshold must be between '0' and '1'.")
-    assert_that(network_model %>% is.list, msg="'network_model' must be type 'list'.")
-    assert_that(network_model %>% names %>% extract(1) == "input", msg="The first layer of 'network_model' must be 'input'.")
-    assert_that(network_model %>% names %>% rev %>% extract(1) == "output", msg="The last layer of 'network_model' must be 'output'.")
-    for (name in network_model %>% names) {
-        if (!name %in% c("input","output")) {
-            assert_that(name %>% as.numeric %>% is.integer, msg="Each hidden layer in 'network_model' must be an integer value.")
-        }
-    }
+## Run the Train Model Function {#RunTrainModel}
+
+Having had set up the training function, let' now run it.
+
+Notice here that:
+
+1. Only the training data is used (see [Split Data](#SplitData) section).
+1. The `He` initialisation algorithm is used, with an order of `2`.
+1. The `relu` activation algorithm is used for the hidden layers, with the `sigmoid` activation algorithm for the output layer.
+1. There are `56` batches, and `50` epochs.
+1. The model results are printed every `10` epochs.
+1. The learning curve is printed at the end.
+
+```{r Run Model Training 1, eval=TRUE, echo=TRUE}
+training_output <- let_TrainModel(
+    x_train=trn_img, y_train=trn_cls,
+    input_nodes=dim(trn_img)[2], hidden_nodes=c(100,75,50,30,20), output_nodes=1,
+    initialisation_algorithm="he", initialisation_order=2,
+    activation_hidden="relu", activation_final="sigmoid",
+    batches=56, epochs=50, learning_rate=0.01,
+    verbosity=10, print_learning_curve=TRUE
+)
+```
+
+It works! This plot proves that the model is training, and it is continuing to learn and improve its performance over time.
+
+Notice here that the cost line begins at approximately `0.4`, and very quickly decreases to `0.4` after 20 Epochs. This can be seen as a success.
+
+## Further Experimentation {#FurtherExperimentation}
+
+Due to the nature of how these functions have been set up, it is very easy for further experimentation and optimisation.
+
+It may be reasonable to try:
+
+1. A different number of hidden layers, or number of nodes per layer (change the `hidden_nodes` parameter),
+1. A different initialisation algorithm, or initialisation order (change the `initialisation_alghorithm` or `initialisation_order` parameter),
+1. A different activation function on the hidden layers (change the `activation_hidden` parameter),
+1. A different number of batches per Epoch (change the `batches` parameter),
+1. A different number of epochs (change the `epochs`) parameter),
+1. A different learning rate (change the `learning_rate` parameter).
+
+Here is an experimentation of trying some different parameters. Notice how the results also change.
+
+```{r Run Model Training 2, eval=TRUE, echo=TRUE}
+training_output <- let_TrainModel(
+    x_train=trn_img, y_train=trn_cls,
+    input_nodes=dim(trn_img)[2], hidden_nodes=c(100,75,50,30,20), output_nodes=1,
+    initialisation_algorithm="xavier", initialisation_order="layers",
+    activation_hidden="relu", activation_final="sigmoid",
+    batches=56, epochs=100, learning_rate=0.001,
+    verbosity=20, print_learning_curve=TRUE
+)
+```
+
+It is then the job of the Data Scientist to identify the optimal configuration of these parameters, in order to achieve a better performance rate. See [Hyperparameter Optimization in Machine Learning Models](https://www.datacamp.com/community/tutorials/parameter-optimization-machine-learning-models) for more details.
+
+However, as this article is not to _achieve_ the best results, but more to _show how_ to achieve said results, and the processes/methodologies involved, then further experimentation will not be conducted.
+
+# Create prediction
+
+```{r Model Function: Get Prediction, eval=FALSE, echo=TRUE}
+get_Prediction <- function(
+    x_test, 
+    y_test, 
+    network_model, 
+    threshold=0.5
+    ) {
     
     # Create prediction
     predic <- set_ForwardProp(
@@ -1876,13 +1879,14 @@ get_Prediction <- function(x_test, y_test, network_model, threshold=0.5) {
     # Return
     return(result)
 }
+```
 
-
+```{r Model Function: Plot Confusion Matrix, eval=FALSE, echo=TRUE}
 plt_ConfusionMatrix <- function(confusion_matrix) {
     #' @title Add function title
     #' @description Add function description.
     #' @note Add a note for the developer.
-    #' @param confusion_matrix `caret::confusionMatrix()`. The confusion matrix, as produced by `cared::confusionMatrix()`.
+    #' @param confusion_matrix `caret::confusionMatrix()`. The confusion matrix, as produced by `caret::confusionMatrix()`.
     #' @return A ggplot object.
     #' @seealso https://stackoverflow.com/questions/37897252/plot-confusion-matrix-in-r-using-ggplot
     #' @author chrimaho

@@ -94,19 +94,15 @@ str_Format <- function(string, ...) {
 
 
 get_Modulus <- function(value) {
-    #' @title Find minimum modulus value
-    #' @description Add function description.
-    #' @note Add a note for the developer.
+    #' @title Find modulus values
+    #' @description Will return a vector containing all of the modulus values which make up the `value` number.
+    #' @note Will actually create a numeric vector of length `value`, then will loop through each element in that vector checking whether the modulus of that value and the `value` equals `0`. If it is `0`, then will be added to the return vector, if not it moves to the next element in the vector.
     #' @param value `numeric`. The value to be modularised.
-    #' @return The minimum modulus number of `value`.
-    #' @seealso 
+    #' @return A vector containing all of the modulus values of `value`.
     #' @author chrimaho
     #' @examples
-    #' # Works
-    #' get_MaximumMudulus(
-    #'     value=NA,
-    #'     NA=NA
-    #' )
+    #' # Get modulus of 100
+    #' get_Modulus(100)  ##[1]   1   2   4   5  10  20  25  50 100
     
     # Packages
     require(assertthat)
@@ -127,6 +123,7 @@ get_Modulus <- function(value) {
     
     # Return
     return(mod_value)
+    
 }
 
 
@@ -209,6 +206,9 @@ is.integer <- function(value) {
 
 get_TimeDifference <- function(start_time, finish_time=Sys.time()) {
     
+    require(assertthat)
+    require(dplyr)
+    
     assert_that(start_time %>% is.time, msg="'start_time' must be type 'time'.")
     assert_that(finish_time %>% is.time, msg="'finish_time' must be type 'time'.")
     
@@ -223,6 +223,20 @@ get_TimeDifference <- function(start_time, finish_time=Sys.time()) {
     
 }
 
+
+get_VerbosityValues <- function(epochs, verbosity) {
+    
+    require(assertthat)
+    require(dplyr)
+    require(magrittr)
+    
+    epochs %>% 
+        divide_by(verbosity) %>% 
+        1:. %>% 
+        multiply_by(verbosity) %>% 
+        return()
+    
+}
 
 #------------------------------------------------------------------------------#
 #                                                                              #
@@ -393,6 +407,139 @@ plt_PlotImage <- function(images, classes, index=1) {
     
     # Return
     return(plot)
+
+}
+
+get_PrintNetwork <- function(network_model) {
+    #' @title Print the Network
+    #' @description Pretty-Print the network to visually see each layer and the relevant shapes and activations
+    #' @param network_model `list`. The network model to be visualised. Note, it must be properly constructed as a network.
+    #' @return A string that can be printed and visualised with the `cat()` function.
+    #' @author chrimaho
+    #' @examples
+    #' get_PrintNetwork(network_model=network_model)
+    
+    # Packages
+    require(assertthat)
+    require(dplyr)
+    require(stringr)
+    require(magrittr)
+    
+    # Validations
+    assert_that(network_model %>% is.list, msg="'network_model' must be type 'list'.")
+    assert_that(network_model %>% names %>% extract(1) == "input", msg="The first layer of 'network_model' must be 'input'.")
+    assert_that(network_model %>% names %>% rev %>% extract(1) == "output", msg="The last layer of 'network_model' must be 'output'.")
+    for (name in network_model %>% names()) {
+        if (!name %in% c("input","output")) {
+            assert_that(name %>% as.numeric %>% is.integer, msg="Each hidden layer in 'network_model' must be an integer value.")
+        }
+    }
+    
+    # Set up variables
+    str_return <- NULL
+    top_bot <- paste0("+", str_pad("-", 32, "left", "-"), "+")
+    
+    # Loop through each layer
+    for (layer in network_model %>% names() %>% length() %>% 1:.) {
+        
+        # Add top
+        str_return %<>% 
+            paste0(top_bot,"\n")
+        
+        # Add layer name
+        str_return %<>%
+            paste0("|", str_pad("Layer", 11, "left"), " : ") %>% 
+            paste0(
+                network_model %>% 
+                    extract(layer) %>% 
+                    names() %>% 
+                    str_pad(18, "right")
+            ) %>% 
+            paste0("|\n")
+        
+        # Add number of nodes
+        str_return %<>%
+            paste0("|", str_pad("Nodes", 11, "left"), " : ") %>% 
+            paste0(
+                network_model %>% 
+                    extract2(layer) %>% 
+                    extract2("nodz") %>% 
+                    format(big.mark=",") %>% 
+                    str_pad(18, "right")
+            ) %>% 
+            paste0("|\n")
+        
+        # Add Input matrix shape
+        str_return %<>%
+            paste0("|", str_pad("Inpt Shape", 11, "left"), " : ") %>% 
+            paste0(
+                network_model %>% 
+                    extract2(layer) %>% 
+                    extract2("inpt") %>% 
+                    dim() %>% 
+                    format(big.mark=",") %>% 
+                    paste0(collapse=" x ") %>% 
+                    str_pad(18, "right")
+            ) %>% 
+            paste0("|\n")
+        
+        # Add Weight matrix shape
+        str_return %<>%
+            paste0("|", str_pad("Wgts Shape", 11, "left"), " : ") %>% 
+            paste0(
+                network_model %>% 
+                    extract2(layer) %>% 
+                    extract2("wgts") %>% 
+                    dim() %>% 
+                    format(big.mark=",") %>% 
+                    paste0(collapse=" x ") %>% 
+                    str_pad(18, "right")
+            ) %>% 
+            paste0("|\n")
+        
+        # Add Output matrix shape
+        str_return %<>%
+            paste0("|", str_pad("Outp Shape", 11, "left"), " : ") %>% 
+            paste0(
+                network_model %>% 
+                    extract2(layer) %>% 
+                    extract2("acti") %>% 
+                    dim() %>% 
+                    format(big.mark=",") %>% 
+                    paste0(collapse=" x ") %>% 
+                    str_pad(18, "right")
+            ) %>% 
+            paste0("|\n")
+        
+        # Add Activation name
+        str_return %<>%
+            paste0("|", str_pad("Activation", 11, "left"), " : ") %>% 
+            paste0(
+                network_model %>% 
+                    extract2(layer) %>% 
+                    extract2("acti_func") %>% 
+                    str_pad(18, "right")
+            ) %>% 
+            paste0("|\n")
+        
+        # Add bottom
+        str_return %<>% 
+            paste0(top_bot,"\n")
+        
+        # If the layer is not the Output layer, add the arrow
+        if (network_model %>% extract(layer) %>% names() %>% equals("output") %>% not()) {
+            
+            str_return %<>%
+                paste0(str_pad("|", 16, "left", " "), "\n") %>% 
+                paste0(str_pad("V", 16, "left", " "), "\n") 
+            
+        }
+        
+    }
+    
+    # Return
+    return(str_return)
+    
 }
 
 
@@ -658,7 +805,7 @@ set_InitialiseModel <- function(network_model, initialisation_algorithm="xavier"
     assert_that(or(is.integer(initialisation_order), is.string(initialisation_order)), msg="'initialisation_order' must be type 'integer' or 'string'.")
     assert_that(network_model %>% names %>% extract(1) == "input", msg="The first layer of 'network_model' must be 'input'.")
     assert_that(network_model %>% names %>% rev %>% extract(1) == "output", msg="The last layer of 'network_model' must be 'output'.")
-    for (name in network_model %>% names) {
+    for (name in network_model %>% names()) {
         if (!name %in% c("input","output")) {
             assert_that(name %>% as.numeric %>% is.integer, msg="Each hidden layer in 'network_model' must be an integer value.")
         }
@@ -673,7 +820,7 @@ set_InitialiseModel <- function(network_model, initialisation_algorithm="xavier"
     }
     
     # Initialise each layer
-    for (layer_index in 1:length(names(network_model))) {
+    for (layer_index in network_model %>% names() %>% length() %>% 1:.) {
         network_model <- set_InitialiseLayer(
             network_model=network_model, 
             layer_index=layer_index, 
@@ -684,6 +831,7 @@ set_InitialiseModel <- function(network_model, initialisation_algorithm="xavier"
     
     # Return
     return(network_model)
+    
 }
 
 
@@ -927,6 +1075,8 @@ set_ForwardProp <- function(network_model, data_in, activation_hidden="relu", ac
     # Packages
     require(assertthat)
     require(dplyr)
+    require(stringr)
+    require(magrittr)
     
     # Validations
     assert_that(network_model %>% is.list, msg="'network_model' must be type 'list'.")
@@ -944,10 +1094,10 @@ set_ForwardProp <- function(network_model, data_in, activation_hidden="relu", ac
     }
     
     # Do work
-    for (index in 1:length(names(network_model))) {
+    for (index in network_model %>% names() %>% length() %>% 1:.) {
         
         # Define layer name
-        layr <- names(network_model)[index]
+        layr <- network_model %>% names() %>% extract(index)
         
         if (layr=="input") {
             
@@ -959,19 +1109,21 @@ set_ForwardProp <- function(network_model, data_in, activation_hidden="relu", ac
             
             # Extract data
             prev <- names(network_model)[index-1]
-            inpt <- network_model[[prev]][["acti"]]
-            wgts <- network_model[[layr]][["wgts"]]
-            bias <- network_model[[layr]][["bias"]]
+            inpt <- network_model %>% extract2(prev) %>% extract2("acti")
+            wgts <- network_model %>% extract2(layr) %>% extract2("wgts")
+            bias <- network_model %>% extract2(layr) %>% extract2("bias")
             
             # Calculate
             linr <- set_LinearForward(inpt, wgts, bias)
             
             # Activate
             if (layr=="output") {
-                acti <- get(paste0("let_Activate",str_to_title(activation_final)))(linr)
+                func <- activation_final %>% str_to_title() %>% paste0("let_Activate", .) %>% get()
+                acti <- func(linr)
                 network_model[[layr]][["acti_func"]] <- activation_final
             } else {
-                acti <- get(paste0("let_Activate",str_to_title(activation_hidden)))(linr)
+                func <- activation_hidden %>% str_to_title() %>% paste0("let_Activate", .) %>% get()
+                acti <- func(linr)
                 network_model[[layr]][["acti_func"]] <- activation_hidden
             }
             
@@ -986,6 +1138,7 @@ set_ForwardProp <- function(network_model, data_in, activation_hidden="relu", ac
     
     # Return
     return(network_model)
+    
 }
 
 
@@ -995,7 +1148,7 @@ get_ComputeCost <- function(pred, true, epsi=1e-10) {
     #' @note Uses a tiny epsilon value in order to account for perfect predictions.
     #' @param pred `matrix`. The matrix of values to use for the prediction.
     #' @param true `matrix`. The matrix of values to use for the truth.
-    #' @param epsi `number`. A very small epsilon value, in order to adjust for perfect predictions.
+    #' @param epsi `number`. A very small epsilon value, in order to adjust for perfect predictions. Default value `1e-10`.
     #' @return A single floating point number.
     #' @author chrimaho
     #' @examples
@@ -1151,15 +1304,19 @@ set_ApplyDifferentiateCost <- function(network_model, cost_differential) {
     }
     
     # Do work
-    for (layer in names(network_model)) {
+    for (layer in network_model %>% names()) {
         network_model[[layer]][["back_cost"]] <- cost_differential
         if (layer=="output") {
-            network_model[[layer]][["back_acti"]] <- network_model[[layer]][["back_cost"]] %>% t()
+            network_model[[layer]][["back_acti"]] <- network_model %>% 
+                extract2(layer) %>% 
+                extract2("back_cost") %>% 
+                t()
         }
     }
     
     # Return
     return(network_model)
+    
 }
 
 
@@ -1301,17 +1458,17 @@ set_BackwardProp <- function(network_model) {
     assert_that(network_model %>% is.list, msg="'network_model' must be type 'list'.")
     assert_that(network_model %>% names %>% extract(1) == "input", msg="The first layer of 'network_model' must be 'input'.")
     assert_that(network_model %>% names %>% rev %>% extract(1) == "output", msg="The last layer of 'network_model' must be 'output'.")
-    for (name in network_model %>% names) {
+    for (name in network_model %>% names()) {
         if (!name %in% c("input","output")) {
             assert_that(name %>% as.numeric %>% is.integer, msg="Each hidden layer in 'network_model' must be an integer value.")
         }
     }
     
     # Loop through each layer in reverse order
-    for (layr_indx in network_model %>% names %>% length %>% 1:. %>% rev) {
+    for (layr_indx in network_model %>% names() %>% length() %>% 1:. %>% rev) {
         
         # Get the layer name
-        layr_curr <- network_model %>% names %>% extract(layr_indx)
+        layr_curr <- network_model %>% names() %>% extract(layr_indx)
         
         # Skip the 'input' layer
         if (layr_curr == "input") next
@@ -1320,14 +1477,15 @@ set_BackwardProp <- function(network_model) {
         layr_prev <- network_model %>% names %>% extract(layr_indx-1)
         
         # Set up the existing matrices
-        linr_curr <- network_model[[layr_curr]][["linr"]]
-        wgts_curr <- network_model[[layr_curr]][["wgts"]]
-        bias_curr <- network_model[[layr_curr]][["bias"]]
-        acti_prev <- network_model[[layr_prev]][["acti"]]
-        diff_acti_curr <- network_model[[layr_curr]][["back_acti"]]
+        linr_curr <- network_model %>% extract2(layr_curr) %>% extract2("linr")
+        wgts_curr <- network_model %>% extract2(layr_curr) %>% extract2("wgts")
+        bias_curr <- network_model %>% extract2(layr_curr) %>% extract2("bias")
+        acti_prev <- network_model %>% extract2(layr_prev) %>% extract2("acti")
+        diff_acti_curr <- network_model %>% extract2(layr_curr) %>% extract2("back_acti")
         
         # Get the activation function
-        acti_func_back <- network_model[[layr_curr]][["acti_func"]] %>% 
+        # acti_func_back <- network_model[[layr_curr]][["acti_func"]] %>% 
+        acti_func_back <- network_model %>% extract2(layr_curr) %>% extract2("acti_func") %>%
             str_to_title %>% 
             paste0("let_BackwardActivate", .)
         
@@ -1347,9 +1505,9 @@ set_BackwardProp <- function(network_model) {
             wgts=wgts_curr,
             bias=bias_curr
         )
-        diff_acti_prev <- list_linr[[1]]
-        diff_wgts_curr <- list_linr[[2]]
-        diff_bias_curr <- list_linr[[3]]
+        diff_acti_prev <- list_linr %>% extract2(1)
+        diff_wgts_curr <- list_linr %>% extract2(2)
+        diff_bias_curr <- list_linr %>% extract2(3)
         
         # Apply back to model
         network_model[[layr_prev]][["back_acti"]] <- diff_acti_prev
@@ -1361,6 +1519,7 @@ set_BackwardProp <- function(network_model) {
     
     # Return
     return(network_model)
+    
 }
 
 
@@ -1396,10 +1555,10 @@ set_UpdateModel <- function(network_model, learning_rate=0.001) {
     }
     
     # Do work
-    for (index in network_model %>% names %>% length %>% 1:.) {
+    for (index in network_model %>% names() %>% length() %>% 1:.) {
         
         # Get layer name
-        layr <- network_model %>% names %>% extract(index)
+        layr <- network_model %>% names() %>% extract(index)
         
         # Skip 'input' layer
         if (layr=="input") next
@@ -1425,34 +1584,31 @@ set_UpdateModel <- function(network_model, learning_rate=0.001) {
 #                                                                              #
 #------------------------------------------------------------------------------#
 
-plt_PlotLearningCurve <- function(model_cost, 
-                                  input_nodes, hidden_nodes, output_nodes, 
-                                  initialisation_algorithm, initialisation_order, 
-                                  activation_hidden, activation_final, 
-                                  epochs, learning_rate
-) {
+plt_PlotLearningCurve <- function(
+    model_cost, 
+    input_nodes, hidden_nodes, output_nodes, 
+    initialisation_algorithm, initialisation_order, 
+    activation_hidden, activation_final,
+    epochs, learning_rate, verbosity,
+    run_time
+    ) {
     #' @title Plot Model Learning Curve
-    #' @description Plot model learning curve.
-    #' @note Add a note for the developer.
+    #' @description For a given Model, plot the learning curve for the training of said model.
+    #' @note This should be run within the `let_TrainModel()` function; it's not advised to run it manually.
     #' @param model_cost `numeric` `vector`. The learning curve for the model.
-    #' @param input_nodes `number`. The number of nodes in the input layer.
-    #' @param hidden_nodes `numeric` `vector`.
-    #' @param output_nodes `number`.
-    #' @param initialisation_algorithm `string`.
-    #' @param initialisation_order `string`.
-    #' @param activation_hidden `string`.
-    #' @param activation_final `string`.
-    #' @param epochs `number`.
-    #' @param learning_rate `number`.
-    #' @return Nothing is being returned.
-    #' @seealso 
+    #' @param input_nodes `number`. The number of nodes in the `input` layer.
+    #' @param hidden_nodes `numeric` `vector`. A vector containing the number of nodes in each of the `hidden` layers.
+    #' @param output_nodes `number`. The number of nodes in the `output` layer.
+    #' @param initialisation_algorithm `string`. The algorithm used for the model initialisation. Should be one `He` or `Xavier`, or similar.
+    #' @param initialisation_order `string`. The order of magnitude for the initialisation algorithm.
+    #' @param activation_hidden `string`. The activation algorithm used for each of the hidden layers.
+    #' @param activation_final `string`. The activation algorithm used for the final, output layer.
+    #' @param epochs `number`. The number of epochs used for training the model.
+    #' @param learning_rate `number`. The learning rate for the model training.
+    #' @param verbosity `number`. The verbosity for this particular training run.
+    #' @param run_time `string`. The 
+    #' @return The `ggplot` object containing the plot for this model's learning curve.
     #' @author chrimaho
-    #' @examples
-    #' # Works
-    #' plt_PlotLearningCurve(
-    #'     model_cost,
-    #'     input_nodes
-    #' )
     
     # Packages
     require(assertthat)
@@ -1469,13 +1625,32 @@ plt_PlotLearningCurve <- function(model_cost,
     assert_that(activation_final %>% is.string, msg="'activation_final' must be type 'string'.")
     assert_that(epochs %>% is.number, msg="'epochs' must be type 'number'.")
     assert_that(learning_rate %>% is.number, msg="'learning_rate' must be type 'number'.")
+    assert_that(verbosity %>% is.number, msg="'verbosity' must be type 'number'.")
+    assert_that(run_time %>% is.string, msg="'run_time' must be type 'string'.")
     
     # Do work
     plot <- model_cost %>% 
         data.frame(cost=.) %>% 
         rowid_to_column("epoch") %>% 
+        mutate(
+            label = ifelse(
+                epoch %in% get_VerbosityValues(epochs, verbosity),
+                round(cost, 3),
+                NA
+            )
+        ) %>% 
         ggplot() +
-        geom_line(aes(epoch,cost)) +
+        geom_line(aes(epoch, cost)) +
+        geom_label(
+            data=function(x){
+                x %>% 
+                    filter(!is.na(label)) %>% 
+                    return()
+            },
+            aes(epoch, cost, label=label), 
+            colour="blue",
+            size=3
+        ) +
         coord_cartesian(ylim=c(0,1)) +
         labs(
             title=paste0("Learning Curve for Neural Network"),
@@ -1483,7 +1658,8 @@ plt_PlotLearningCurve <- function(model_cost,
                 "Inpt: '", input_nodes, "',  Hidd: '", paste0(hidden_nodes, collapse=","), "',  Outp: '", output_nodes, "'\n",
                 "Init Alg: '", initialisation_algorithm, "',  Init Ord: '", initialisation_order, "'\n",
                 "Acti Hid: '", activation_hidden, "',  Acti Out: '", activation_final, "'\n",
-                "Epochs: '", epochs, "',  Lrn Rate: '", learning_rate, "'\n"
+                "Epochs: '", epochs, "',  Lrn Rate: '", learning_rate, "'\n",
+                "Run Time:  '", run_time, "'"
             ),
             x="Epoch",
             y="Cost"
@@ -1491,25 +1667,28 @@ plt_PlotLearningCurve <- function(model_cost,
     
     # Return
     return(plot)
+    
 }
 
 
 get_BatchIndexes <- function(vector, batches=get_Modulus(length(vector))[4], batch=1, seed=sample(1:100,1)) {
-    #' @title Get the batches for a given vector
-    #' @description Add function description.
-    #' @note Add a note for the developer.
+    #' @title Get the indexes corresponding to a given batch 
+    #' @description Used for splitting the input image set in to an easily manageable set of batches.
+    #' @note The seed is quite important, to ensure that each subsequent extraction of the the next `batch` in `batches` does not duplicate the indices in previous batches.
     #' @param vector `vector`. The vector to be batched up.
     #' @param batches `integer`. The number of batches required. Default value `get_Modulus(dim(vector)[1])[4]`.
     #' @param batch `number`. The batch number required. Default value `1`.
+    #' @param seed `number`. The seed to be used for reproducibility and consistency in subsequent batch segmentations. DO NOT TRUST THE DEFAULT VALUE! Default value `sample(1:100,1)`.
     #' @return A vector with the same length as `vector` comprising of logical values where `TRUE` is the index for the given `batch` and `FALSE` is everything else.
-    #' @seealso 
     #' @author chrimaho
     #' @examples
-    #' # Works
-    #' get_VectorBatches(
-    #'     vector=NA,
-    #'     batches=get_Modulus(dim(vector)[1])[7]
-    #' )
+    #' # First batch of 10 elements
+    #' get_BatchIndexes(1:10, batches=2, batch=1, seed=3)
+    #' [1]  TRUE FALSE  TRUE  TRUE  TRUE FALSE FALSE FALSE FALSE  TRUE
+    #' 
+    #' # Second batch of 20 elements
+    #' get_BatchIndexes(1:10, batches=2, batch=2, seed=3)
+    #' [1] FALSE  TRUE FALSE FALSE FALSE  TRUE  TRUE  TRUE  TRUE FALSE
     
     # Packages
     require(assertthat)
@@ -1534,41 +1713,37 @@ get_BatchIndexes <- function(vector, batches=get_Modulus(length(vector))[4], bat
         select(bat) %>% 
         pull %>% 
         return()
+    
 }
 
 
-let_TrainModel <- function(x_train, y_train,
-                           input_nodes=dim(x_train)[2], hidden_nodes=c(100, 50, 10), output_nodes=1,
-                           initialisation_algorithm="xavier", initialisation_order="layers",
-                           activation_hidden="relu", activation_final="sigmoid",
-                           batches=get_Modulus(dim(x_train)[1])[4], epochs=500, learning_rate=0.001,
-                           verbosity=NA, print_learning_curve=TRUE
-) {
+let_TrainModel <- function(
+    x_train, y_train,
+    input_nodes=dim(x_train)[2], hidden_nodes=c(100, 50, 10), output_nodes=1,
+    initialisation_algorithm="xavier", initialisation_order="layers",
+    activation_hidden="relu", activation_final="sigmoid",
+    batches=get_Modulus(dim(x_train)[1])[4], epochs=500, learning_rate=0.001,
+    verbosity=NA, print_learning_curve=TRUE
+    ) {
     #' @title Train network model
     #' @description Parse in the relevant parameters, and then instantiate, initialise, forward propagate, assess, differentiate, backward propagate and update model. Then repeat this process `epoch` number of times.
     #' @note The model will be re-created every time this function is run.
     #' @param x_train `array`. The 4-D array of images for training.
     #' @param y_train `array`. The 2-D array of labels for each image.
-    #' @param input_nodes `integer`.
-    #' @param hidden_nodes `vector` of `integer`s.
-    #' @param output_nodes `integer`.
-    #' @param initialisation_algorithm `string` or `NA`.
-    #' @param initialisation_order `integer` or `string`.
-    #' @param activation_hidden `string`.
-    #' @param activation_final `string`.
-    #' @param batches `integer`.
-    #' @param epochs `integer`.
-    #' @param learning_rate `number`.
-    #' @param verbosity `integer` or `NA`.
-    #' @param print_learning_curve `logical`.
+    #' @param input_nodes `integer`. The number of nodes in the input layer. This should be derived from the number of elements in the second dimension of the `x_train` object. Default value `dim(x_train)[2]`.
+    #' @param hidden_nodes `vector` of `integer`s. Each element of this vector specifies the number of nodes to be created in each of the hidden layers of the network. Default Value `c(100, 50, 10)`.
+    #' @param output_nodes `integer`. The number of nodes in the output layer of the network. Default Value `1`.
+    #' @param initialisation_algorithm `string` or `NA`. The algorithm to be used for the initialisation of the network. Default Value `"xavier"`.
+    #' @param initialisation_order `integer` or `string`. The order of magnitude to be used for the initialisation algorithm. Default Value `"layers"`.
+    #' @param activation_hidden `string`. The activation algorithm to be used for the `hidden` layers in the network. Default Value `"relu"`.
+    #' @param activation_final `string`. The activation algorithm to be used for the `output` layer of the network. Default Value `"sigmoid"`.
+    #' @param batches `integer`. The number of batches to split the `x_train` object in to. The length of the first dimension of `x_train` should be easily divisible by this number. Default Value `get_Modulus(dim(x_train)[1])[4]`.
+    #' @param epochs `integer`. The number of epochs to be used for training this network. Default Value `500`.
+    #' @param learning_rate `number`. The learning rate to be used for this network. Default Value `0.001`.
+    #' @param verbosity `integer` or `NA`. The epoch at which the learning rate should be printed, if at all. Default Value `NA`.
+    #' @param print_learning_curve `logical`. Whether or not the learning curve should be printed at the end of the training. Default Value `TRUE`.
     #' @return A list containing the `results`, and the final trained `network_model`.
     #' @author chrimaho
-    #' @examples
-    #' # Works
-    #' let_TrainModel(
-    #'     x_train,
-    #'     y_train
-    #' )
     
     # Packages
     require(assertthat)
@@ -1634,8 +1809,8 @@ let_TrainModel <- function(x_train, y_train,
             batch_indexes <- get_BatchIndexes(
                 vector=1:dim(x_train)[1], 
                 batches=batches, 
-                batch=batch 
-                # seed=1234
+                batch=batch, 
+                seed=1234
             )
             
             # Set data
@@ -1685,11 +1860,19 @@ let_TrainModel <- function(x_train, y_train,
         
         # Print update
         if (!is.na(verbosity)) {
-            if (epoch %% verbosity == 0) {
+            if (epoch %in% get_VerbosityValues(epochs, verbosity)){
                 if (epoch == verbosity) {
-                    cat("Learning rate: {}\n" %>% str_Format(learning_rate))
+                    "Learning rate: {}\n" %>% 
+                        str_Format(learning_rate) %>% 
+                        cat()
                 }
-                cat("Epoch {}, Cost: {}, Time: {}\n" %>% str_Format(epoch, cost, get_TimeDifference(time_begin)))
+                "Epoch {}, Cost: {}, Time: {}\n" %>% 
+                    str_Format(
+                        epoch, 
+                        round(cost, 5), 
+                        get_TimeDifference(time_begin)
+                    ) %>% 
+                    cat()
             }
         }
         
@@ -1703,23 +1886,26 @@ let_TrainModel <- function(x_train, y_train,
         
         tryCatch(
             expr={
-                output[["results"]][["cost"]] %>% 
+                output %>% 
+                    extract2("results") %>% 
+                    extract2("cost") %>% 
                     plt_PlotLearningCurve(
                         input_nodes=input_nodes, hidden_nodes=hidden_nodes, output_nodes=output_nodes,
                         initialisation_algorithm=initialisation_algorithm, initialisation_order=initialisation_order,
                         activation_hidden=activation_hidden, activation_final=activation_final,
-                        epochs=epochs, learning_rate=learning_rate
+                        epochs=epochs, learning_rate=learning_rate, verbosity=verbosity,
+                        run_time=get_TimeDifference(time_begin)
                     ) %>% 
                     print()
             },
             warning=function(message){
                 writeLines("A Warning occurred:")
-                writeLines(message)
+                print(message)
                 return(invisible(NA))
             },
             error=function(message){
                 writeLines("An Error occurred:")
-                writeLines(message)
+                print(message)
                 return(invisible(NA))
             },
             finally={
@@ -1731,6 +1917,7 @@ let_TrainModel <- function(x_train, y_train,
     
     # Return
     return(output)
+    
 }
 
 
@@ -1770,7 +1957,7 @@ get_Prediction <- function(x_test, y_test, network_model, threshold=0.5) {
     assert_that(network_model %>% is.list, msg="'network_model' must be type 'list'.")
     assert_that(network_model %>% names %>% extract(1) == "input", msg="The first layer of 'network_model' must be 'input'.")
     assert_that(network_model %>% names %>% rev %>% extract(1) == "output", msg="The last layer of 'network_model' must be 'output'.")
-    for (name in network_model %>% names) {
+    for (name in network_model %>% names()) {
         if (!name %in% c("input","output")) {
             assert_that(name %>% as.numeric %>% is.integer, msg="Each hidden layer in 'network_model' must be an integer value.")
         }
