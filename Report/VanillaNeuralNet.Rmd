@@ -203,9 +203,9 @@ source("../Functions/functions.R")
 The dataset to be used is the [CIFAR-10](https://www.cs.toronto.edu/~kriz/cifar.html) dataset. It's chosen for a number of reasons, including:
 
 1. The data is on images, which is ideal for Deep Learning purposes;
-1. There are a decent number of images included (60,000 images in total);
-1. All images are the same the same size (32x32 pixels);
-1. The images have been categorised in to 10 different classes; and
+1. There are a decent number of images included ($60,000$ images in total);
+1. All images are the same the same size ($32$x$32$ pixels);
+1. The images have been categorised in to `10` different classes; and
 1. It's easily accessible through the `TensorFlow` package.
 
 The following code chunk has the following process steps:
@@ -468,7 +468,9 @@ for (name in c("trn_img","tst_img","trn_cls","tst_cls")) {
 
 ## Reshape Data {#ReshapeData}
 
-For the first `input` layer of our Neural Network, we want to be a single dimension of nodes. Therefore, it is necessary to reshape the data from a 4-Dimensional array in to a 2-Dimensional array. This can be done quite easily with the `array()` function, as it has the `dim=` argument which can be used to specify the dimensions required.
+For the first `input` layer of our Neural Network, we want to be a single dimension of nodes. Therefore, it is necessary to reshape the data from a 4-Dimensional array in to a 2-Dimensional array. This process is called Flattening, and more information can be found here: [Memory Layout of Multi-Dimensional Arrays](https://eli.thegreenplace.net/2015/memory-layout-of-multi-dimensional-arrays).
+
+The implementation of this method can be done quite easily with the `array()` function, as it has the `dim=` argument which can be used to specify the dimensions required.
 
 The desired matrix size should have each _image_ in a new row, and each _pixel_ on a different column. Because each pixel is comprised of the 2nd, 3rd and 4th dimensions, we need to take the _product_ of these three numbers, and use that to specify the desired number of columns. Effectively, we are running the equation: $32\times32\times3$, which equates to having $3072$ columns. This equation is implemented programmatically in-line, in the next code chunk.
 
@@ -623,7 +625,7 @@ There is a very good website available which allows Neural Networks to be visual
 
 Further visualisation can be conducted once the network is fully initialised and forward propagated. See section [Check Shapes](#CheckShapes) for more details
 
-![*Figure 1: Network Architecture*](./Images/Network Architecture.png)
+![*Network Architecture*](./Images/Network Architecture.png)
 
 # Initialise the Network {#InitialiseNetwork}
 
@@ -1230,7 +1232,7 @@ network_model %<>% set_ForwardProp(trn_img, "relu", "sigmoid")
 toc()
 ```
 
-As mentioned above in the [Split Data](#SplitData) section, the `trn_img` object is over `82 Mb` large. The entire end-to-end process for forward propagation took only `3 seconds` to run; which is quite impressive, and is a testament to the power of mathematics.
+As mentioned above in the [Split Data](#SplitData) section, the `trn_img` object is over `82 Mb` large. The entire end-to-end process for forward propagation took only `5 seconds` to run; which is quite impressive, and is a testament to the power of mathematics.
 
 ## Check Model Shapes {#CheckShapes}
 
@@ -1518,7 +1520,7 @@ network_model %<>% set_BackwardProp()
 toc()
 ```
 
-As shown, it took approximately 7 seconds to run this function. This is quite impressive, considering that there are over 320,000 parameters to be updated (see [Check Model Parameters](#CheckModelParameters) section).
+As shown, it took approximately `5 seconds` to run this function. This is quite impressive, considering that there are over 320,000 parameters to be updated (see [Check Model Parameters](#CheckModelParameters) section).
 
 # Update Model Parameters {#UpdateModelParameters}
 
@@ -1526,7 +1528,9 @@ After the model parameters have been differenced, it's then necessary to update 
 
 The method used to update these parameters is called [Stochastic Gradient Descent](https://en.wikipedia.org/wiki/Stochastic_gradient_descent). For more information, see [Stochastic Gradient Learning in Neural Networks](https://leon.bottou.org/publications/pdf/nimes-1991.pdf) or [Backpropagation and Stochastic Gradient Descent Method](https://www.sciencedirect.com/science/article/abs/pii/092523129390006O).
 
-The process is quite simple:
+For sure, there are other methods of implementing neural network optimisation. The literature has been spending a lot of effort in this area. There are algorithms such as [RMSProp](https://towardsdatascience.com/understanding-rmsprop-faster-neural-network-learning-62e116fcf29a) and [Adam](https://towardsdatascience.com/adam-latest-trends-in-deep-learning-optimization-6be9a291375c), which implement intelligent methods to achieve a faster convergence, and a more accurate final result. Some good sources for this include [An Empirical Comparison of Optimizers for Machine Learning Models](https://heartbeat.fritz.ai/an-empirical-comparison-of-optimizers-for-machine-learning-models-b86f29957050) and [Overview of different Optimizers for neural networks](https://medium.com/datadriveninvestor/overview-of-different-optimizers-for-neural-networks-e0ed119440c3). For further enhancement and optimisation, it is important to explore these optimisation options.
+
+Nonetheless, the process of implementing Stochastic Gradient Descent is really quite simple:
 
 1. Specify a given _learning rate_ between `0` and `1` (usually very very small, for example `0.001`).
 1. Take the differenced _weight_ and _bias_ matrices, and multiply by the _learning rate_ in a **negative** direction.
@@ -1800,7 +1804,7 @@ Notice here that:
 1. The model results are printed every `10` epochs.
 1. The learning curve is printed at the end.
 
-```{r Run Model Training 1, eval=TRUE, echo=TRUE}
+```{r Run Model Training 1, eval=TRUE, echo=TRUE, message=FALSE}
 training_output <- let_TrainModel(
     x_train=trn_img, y_train=trn_cls,
     input_nodes=dim(trn_img)[2], hidden_nodes=c(100,75,50,30,20), output_nodes=1,
@@ -1813,7 +1817,7 @@ training_output <- let_TrainModel(
 
 It works! This plot proves that the model is training, and it is continuing to learn and improve its performance over time.
 
-Notice here that the cost line begins at approximately `0.4`, and very quickly decreases to `0.4` after 20 Epochs. This can be seen as a success.
+Notice here that the cost line begins at approximately `0.4`, and very quickly decreases to `0.4` after 20 Epochs. In order for it to complete the full 50 Epochs, this took approximately `21 minutes`. This can be seen as a success.
 
 ## Further Experimentation {#FurtherExperimentation}
 
@@ -1826,11 +1830,12 @@ It may be reasonable to try:
 1. A different activation function on the hidden layers (change the `activation_hidden` parameter),
 1. A different number of batches per Epoch (change the `batches` parameter),
 1. A different number of epochs (change the `epochs`) parameter),
-1. A different learning rate (change the `learning_rate` parameter).
+1. A different learning rate (change the `learning_rate` parameter),
+1. Get more data (recall in the [Download Data](#DownloadData) section, only $10,000$ images were downloaded; but there are another $50,000$ images which can be used for further training).
 
-Here is an experimentation of trying some different parameters. Notice how the results also change.
+Here is an experimentation of trying some different parameters. Notice how the results also change. This next round of training took `37 minutes` to run.
 
-```{r Run Model Training 2, eval=TRUE, echo=TRUE}
+```{r Run Model Training 2, eval=TRUE, echo=TRUE, message=FALSE}
 training_output <- let_TrainModel(
     x_train=trn_img, y_train=trn_cls,
     input_nodes=dim(trn_img)[2], hidden_nodes=c(100,75,50,30,20), output_nodes=1,
@@ -1880,9 +1885,9 @@ get_Prediction <- function(
         truth=y_test
     )
     
-    # Add class
+    # Add prdic
     result %<>% 
-        mutate(class=ifelse(probas>threshold, 1, 0))
+        mutate(prdic=ifelse(probas>threshold, 1, 0))
     
     # Return
     return(result)
@@ -1953,7 +1958,7 @@ lst <- list()
 for (image in 1:16) {
     lst[[image]] <- plt_PlotImage(
         cifar$images[-partition,,,], 
-        Prediction[["class"]], 
+        Prediction[["prdic"]], 
         ClassList,
         image
     )
@@ -1967,13 +1972,13 @@ gridExtra::grid.arrange(grobs=lst, ncol=4)
 
 The next step then is to statistically test the data to see how accurate it may be. For this, the `confusionMatrix()` function (from the `caret` package) used. From this output, it is possible to select the appropriate metric in order for further optimising the neural network.
 
-Since this article is about _showing_ the method, then we will not progress any further is more optimisation here.
+Since this article is about _showing_ the method, then we will not progress any further with more optimisation here.
 
-```{r Confusion Matrix, eval=TRUE, echo=TRUE}
+```{r Create Confusion Matrix, eval=TRUE, echo=TRUE}
 # Set Up
 ConfusionMatrix <- Prediction %>% 
-    mutate_at(c("truth","class"), ~ifelse(.==1,"car","not")) %>% 
-    select(class,truth) %>% 
+    mutate_at(c("truth","prdic"), ~ifelse(.==1,"car","not")) %>% 
+    select(prdic,truth) %>% 
     table %>% 
     caret::confusionMatrix()
 
@@ -1981,18 +1986,24 @@ ConfusionMatrix <- Prediction %>%
 ConfusionMatrix %>% print()
 ```
 
+Next step is to plot the confusion matrix. A good source of understanding and interpreting confusion matrices can be found here: [Confusion Matrix](https://en.wikipedia.org/wiki/Confusion_matrix). In this website, it also includes an image (also copied below) for a very good visual understanding.
 
+![*Confusion Matrix Interpretation*](./Images/Confusion Matrix.png)
 
-```{r Plot Test Prediction, eval=TRUE, echo=TRUE, fig.width=5, fig.height=5, message=FALSE}
-# Print
+When we visualise the confusion matrix of our model, we can see that successfully predicted a majority of the images. However, the largest number of bad classifications is where it predicted that the image was a car, when it actually was not.
+
+```{r Plot Confusion Matrix, eval=TRUE, echo=TRUE, fig.width=5, fig.height=5, message=FALSE}
+# Plot Confusion Matrix
 ConfusionMatrix %>% 
     plt_ConfusionMatrix()
 ```
 
+Another good analytical and plotting tool is to use the ROC Curve (receiver operating characteristics). An ROC Curve is a graphical plot that illustrates the diagnostic ability of a binary classifier system as its discrimination threshold is varied (see [Receiver Operating Characteristic](https://en.wikipedia.org/wiki/Receiver_operating_characteristic)).
 
+Essentially, a model that creates a perfect prediction would have the curve perfectly 'hugging' the top-left of this plot. As our model is not doing this, it is clearly obvious that further training and optimisation is necessary. For this, it is necessary to continue experimenting as mentioned in the [Further Experimentation](#FurtherExperimentation) section.
 
 ```{r Plot ROC, eval=TRUE, echo=TRUE, fig.width=5, fig.height=5, message=FALSE}
-# Print
+# Print ROC
 Prediction %>% 
     ggplot() +
     plotROC::geom_roc(aes(m=probs, d=truth), n.cuts=0) +
@@ -2012,140 +2023,40 @@ Prediction %>%
     )
 ```
 
+# Conclusion
+
+This is an effective representation for how to build Vanilla Neural Networks in R. Here, it has been shown how to:
+
+1. Access and check the data
+1. Instantiate and Initialise the network
+1. Run forward propagation
+1. Compute the cost
+1. Run backward propagation
+1. Update the model
+1. Set up a training method to loop through every thing
+1. Predict and assess the performance
+
+It has also been shown how to do this entirely in `R`, and without using any pre-defined deep learning framework. For sure, there are other packages that can perform all of the steps here, and perhaps in a more computationally efficient manner. But the use of these packages is not the target of this article. Here, the aim is to dispel the 'blackbox' phenomenon, and to show how to create these deep learning frameworks from the ground up.
+
+As shown, the architecture of these feed-forward neural networks effectively use [matrix multiplication](https://en.wikipedia.org/wiki/Matrix_multiplication) and [differential calculus](https://en.wikipedia.org/wiki/Differential_calculus) in order to adjust the 'weights' of a network, and increase it's predictive power. It does require lots of data, and does require a long time to train and optimise. Furthermore, there are many (many, _many_) different architectural choices that can be made along the way, all of which are at the discretion of the Data Scientist applying this methodology.
+
+At the end of the day, this article has proven that deep learning can definitely be achieved in `R`. Thereby, dispelling the myth that 'in order to do Deep Learning, you must use `Python`'. Certainly, there are many successful implementations of Deep Learning in `Python`; for example: [Building a Feedforward Neural Network from Scratch in Python](https://hackernoon.com/building-a-feedforward-neural-network-from-scratch-in-python-d3526457156b). There's also example of achieving the same in Swift ([Deep Neural Networks in Swift, lessons learned](https://www.tooploox.com/blog/deep-neural-networks-in-swift-lessons-learned)), and in C++ ([Neural Network Implementation in C++ From Scratch](https://www.geeksforgeeks.org/ml-neural-network-implementation-in-c-from-scratch/)), and in Java ([Implementing an Artificial Neural Network in Pure Java (No external dependencies)](https://medium.com/coinmonks/implementing-an-artificial-neural-network-in-pure-java-no-external-dependencies-975749a38114)). Therefore, the specific language used is effectively irrelevant. What matters is the use case, the environment, the business artifacts, and the language that the Data Scientist feels comfortable in.
+
+# Post Script {#PostScript}
+
+**Acknowledgements**: This report was compiled with some assistance from others. Acknowledgements go to:
+
+1. [Alex Scriven](https://www.linkedin.com/in/alexjscriven/)
 
 
-## Run `Xavier`
+**Publications**: This report is also published on the following sites:
 
-```{r, fig.width=15, fig.height=8}
-training_output <- let_TrainModel(
-    x_train=trn_img, y_train=trn_cls,
-    input_nodes=dim(trn_img)[2], hidden_nodes=c(100,75,50,30,20), output_nodes=1,
-    initialisation_algorithm="xavier", initialisation_order="layers",
-    batches=56, epochs=500, learning_rate=0.001,
-    activation_hidden="relu", activation_final="sigmoid",
-    verbosity=50, print_learning_curve=TRUE
-)
-
-get_Prediction(tst_img, tst_cls, training_output[["network_model"]], 0.1) %>% 
-    mutate_at(c("truth","class"), funs(ifelse(.==1,"car","not"))) %>% 
-    select(class,truth) %>% 
-    table %>% 
-    caret::confusionMatrix() %>% 
-    (function(x){
-        print(x)
-        return(x)
-    }) %>% 
-    plt_ConfusionMatrix()
-
-get_Prediction(tst_img, tst_cls, training_output[["network_model"]]) %>% 
-    ggplot() +
-    plotROC::geom_roc(aes(m=probs, d=truth), n.cuts=0) +
-    plotROC::style_roc(theme=theme_grey) +
-    theme(
-        plot.title = element_text(hjust=0.5),
-        plot.subtitle = element_text(hjust=0.5)
-    ) + 
-    labs(
-        title="ROC Curve"
-    )
-```
-
-## Run `He`
-
-```{r, fig.width=15, fig.height=8}
-training_output <- let_TrainModel(
-    x_train=trn_img, y_train=trn_cls,
-    input_nodes=dim(trn_img)[2], hidden_nodes=c(100,75,50,30,20), output_nodes=1,
-    initialisation_algorithm="he", initialisation_order=2,
-    batches=56, epochs=500, learning_rate=0.01,
-    activation_hidden="relu", activation_final="sigmoid",
-    verbosity=50, print_learning_curve=TRUE
-)
-
-get_Prediction(tst_img, tst_cls, training_output[["network_model"]], 0.1) %>% 
-    mutate_at(c("truth","class"), funs(ifelse(.==1,"car","not"))) %>% 
-    select(class,truth) %>% 
-    table %>% 
-    caret::confusionMatrix() %>% 
-    (function(x){
-        print(x)
-        return(x)
-    }) %>% 
-    plt_ConfusionMatrix()
-
-get_Prediction(tst_img, tst_cls, training_output[["network_model"]]) %>% 
-    ggplot() +
-    plotROC::geom_roc(aes(m=probs, d=truth), n.cuts=0) +
-    plotROC::style_roc(theme=theme_grey) +
-    theme(
-        plot.title = element_text(hjust=0.5),
-        plot.subtitle = element_text(hjust=0.5)
-    ) + 
-    labs(
-        title="ROC Curve"
-    )
-```
+1. RPubs: [RPubs/chrimaho/AddressingTheJohnSmithProblem](http://rpubs.com/chrimaho/AddressingTheJohnSmithProblem)
+1. GitHub: [GitHub/chrimaho/AddressingTheJohnSmithProblem](https://github.com/chrimaho/AddressingTheJohnSmithProblem)
+1. Medium: [Medium/chrimaho/AddressingTheJohnSmithProblem](https://medium.com/@chrimaho/addressingthejohnsmithproblem-1533da4f7db8?source=friends_link&sk=ae556dc05ee752a9b809092ca152da18)
 
 
-# Predict
 
-## Set Up
+**Change Log**: This publication was modified on the following dates:
 
-```{r}
-get_Prediction <- function(x_test, y_test, network_model, threshold=0.5) {
-    
-    # Create prediction
-    predic <- set_ForwardProp(
-        network_model=network_model, 
-        data_in=x_test, 
-        activation_hidden="relu", 
-        activation_final="sigmoid"
-    )
-    
-    # Extract probabilities
-    probas <- predic %>% 
-        extract2("output") %>% 
-        extract2("acti")
-    
-    # Define results
-    result <- data.frame(
-        probs=probas,
-        truth=y_test
-    )
-    
-    # Add class
-    result %<>% 
-        mutate(class=ifelse(probas>threshold, 1, 0))
-    
-    # Return
-    return(result)
-    
-}
-
-```
-
-
-```{r, fig.width=6, fig.height=5}
-get_Prediction(tst_img, tst_cls, training_output[["network_model"]], 0.1) %>% 
-    mutate_at(c("truth","class"), funs(ifelse(.==1,"car","not"))) %>% 
-    select(class,truth) %>% 
-    table %>% 
-    caret::confusionMatrix() %>% 
-    (function(x){
-        print(x)
-        return(x)
-    }) %>% 
-    plt_ConfusionMatrix()
-
-get_Prediction(tst_img, tst_cls, training_output[["network_model"]]) %>% 
-    ggplot() +
-    plotROC::geom_roc(aes(m=probs, d=truth), n.cuts=0) +
-    plotROC::style_roc(theme=theme_grey) +
-    theme(
-        plot.title = element_text(hjust=0.5),
-        plot.subtitle = element_text(hjust=0.5)
-    ) + 
-    labs(
-        title="ROC Curve"
-    )
-```
+1. 10/Oct/2020: Original Publication date.
