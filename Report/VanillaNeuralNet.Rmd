@@ -2,7 +2,7 @@
 title: 'Vanilla Neural Networks in R'
 subtitle: 'Designing and Building Neural Networks from Scratch in R, using no Deep Learning Frameworks'
 author: 'Author: [Chris Mahoney](https://www.linkedin.com/in/chrimaho/)'
-date: 'Special thanks to: [Alex Scriven](https://www.linkedin.com/in/alexjscriven/'
+date: 'Special thanks to: [Alex Scriven](https://www.linkedin.com/in/alexjscriven/)'
 toc-title: Contents
 output:
     html_notebook: 
@@ -165,7 +165,7 @@ The first step is to import the relevant packages. This list includes the the ma
 Note what is listed above about not using existing Deep Learning packages, and yet the `tensorflow` package is included. Why? Well, this is used for only accessing the data, which will be covered in the next section. The `tensorflow` package is not used for building and training any networks.
 
 ```{r Load Packages, eval=TRUE, echo=TRUE, warning=FALSE, message=FALSE}
-library(tensorflow)  #<-- Only used for getting the data, nothing else
+library(tensorflow)  #<-- Only used for getting the data
 library(tidyverse)   #<-- Used for accessing various tools
 library(magrittr)    #<-- Extends the `dplyr` syntax
 library(grDevices)   #<-- For plotting the images
@@ -173,10 +173,11 @@ library(assertthat)  #<-- Function assertions
 library(roxygen2)    #<-- Documentation is important
 library(caret)       #<-- Doing data partitioning
 library(stringi)     #<-- Some string manipulation parts
-library(DescTools)   #<-- The only package that properly checks `is.integer`
+library(DescTools)   #<-- To properly check `is.integer`
 library(tictoc)      #<-- Time how long different processes take
-library(docstring)   #<-- Makes viewing the documentation a lot easier
-library(roperators)  #<-- Conveniently using nifty functions like %+=%
+library(docstring)   #<-- Makes viewing the documentation easier
+library(roperators)  #<-- Conveniently using functions like %+=%
+library(plotROC)     #<-- For plotting predictions
 ```
 
 ```{r Set Defaults, eval=TRUE, echo=FALSE}
@@ -235,8 +236,9 @@ The following code chunk has the following process steps:
 
 ```{r Get Data, eval=TRUE, echo=TRUE, messages=FALSE, errors=FALSE}
 # Download Data
-# NOTE: The first time you run this function, it may take a while to download.
-#       All other times you run it, Tensorflow will load from Cache before re-downloading.
+# NOTE:
+# - The first time you run this function, it download everything.
+# - Next time you run it, TensorFlow will load from Cache.
 cifar <- tf$keras$datasets$cifar10$load_data() %>% 
     extract2(2) %>% 
     set_names(c("images","classes"))
@@ -291,11 +293,10 @@ cifar %>%
 
 After having gained an appreciation of the size of the objects in memory, it is then worth while to check the actual images themselves. As humans, we understand the actual images and the colours, better than we understand the numbers.
 
-In order to visualise the images, two custom functions are written, as shown in the following code chunk. These functions take in the data (as a 4-Dimensional array), and visualise the images as a plot.
+In order to visualise the images, two custom functions are written, as shown in the following code chunk. These functions take in the data (as a 4-Dimensional array), and visualise the images as a plot. Note, the source code for the custom function `set_MakeImage()` can be found [here](https://github.com/chrimaho/VanillaNeuralNetworksInR/blob/master/Functions/functions.R).
 
 ```{r Function: Make Image, eval=FALSE, echo=TRUE}
 set_MakeImage <- function(image, index=1) {
-    #' @seealso https://stackoverflow.com/questions/32113942/importing-cifar-10-data-set-to-r#answer-39672323
     
     # Extract elements
     image.r <- image[,,1]
@@ -314,13 +315,12 @@ set_MakeImage <- function(image, index=1) {
 ```
 
 ```{r Function: Plot Image, eval=FALSE, echo=TRUE}
-plt_PlotImage <- function(images, classes, index=1) {
-    #' @seealso https://stackoverflow.com/questions/12918367/how-to-plot-with-a-png-as-background#answer-12918368
+plt_PlotImage <- function(images, classes, class_list, index=1) {
     
     # Slice images
     image <- images[index,,,]
     image %<>% set_MakeImage(index)
-    lbl <- classes %>% extract(index) %>% as.character() %>% ClassList[[.]]
+    lbl <- classes %>% extract(index) %>% as.character() %>% class_list[[.]]
     
     # Create plot
     plot <- ggplot() + 
@@ -339,8 +339,8 @@ When the function is run on the top 16 images, the following is displayed. As sh
 lst <- list()
 
 # Loop 16 images
-for (image in 1:16) {
-    lst[[image]] <- plt_PlotImage(cifar$images, cifar$classes, image)
+for (index in 1:16) {
+    lst[[index]] <- plt_PlotImage(cifar$images, cifar$classes, ClassList, index)
 }
 
 # View images
@@ -1845,7 +1845,13 @@ It is then the job of the Data Scientist to identify the optimal configuration o
 
 However, as this article is not to _achieve_ the best results, but more to _show how_ to achieve said results, and the processes/methodologies involved, then further experimentation will not be conducted.
 
-# Create prediction
+# Create Prediction {#CreatePrediction}
+
+After having trained the network, next step is to apply it to the `test` data to see how accurate it can predict unknown data.
+
+## Set Up Prediction {#SetUpPrediction}
+
+The first step is to write two custom functions. The first will take in the test data and trained model, and will return a dataframe containing the predicted values and the truth values. The pretty-print the Confusion Matrix in a `ggplot`-style of output.
 
 ```{r Model Function: Get Prediction, eval=FALSE, echo=TRUE}
 get_Prediction <- function(
@@ -1864,7 +1870,9 @@ get_Prediction <- function(
     )
     
     # Extract probabilities
-    probas <- predic[["output"]][["acti"]]
+    probas <- predic %>% 
+        extract2("output") %>% 
+        extract2("acti")
     
     # Define results
     result <- data.frame(
@@ -1878,32 +1886,13 @@ get_Prediction <- function(
     
     # Return
     return(result)
+    
 }
 ```
 
 ```{r Model Function: Plot Confusion Matrix, eval=FALSE, echo=TRUE}
 plt_ConfusionMatrix <- function(confusion_matrix) {
-    #' @title Add function title
-    #' @description Add function description.
-    #' @note Add a note for the developer.
-    #' @param confusion_matrix `caret::confusionMatrix()`. The confusion matrix, as produced by `caret::confusionMatrix()`.
-    #' @return A ggplot object.
-    #' @seealso https://stackoverflow.com/questions/37897252/plot-confusion-matrix-in-r-using-ggplot
-    #' @author chrimaho
-    #' @examples
-    #' # Works
-    #' plt_ConfusionMatrix(
-    #'     confusion_matrix=NA,
-    #'     title=NA
-    #' )
-    
-    # Packages
-    require(assertthat)
-    require(dplyr)
-    
-    # Validations
-    assert_that((confusion_matrix %>% class) == "confusionMatrix", msg="'confusion_matrix' must be class 'confusionMatrix()', as generated by the 'caret::confusionMatrix()' function.")
-    
+
     # Do work
     plot <- confusion_matrix %>% 
         extract("table") %>% 
@@ -1929,45 +1918,101 @@ plt_ConfusionMatrix <- function(confusion_matrix) {
     
     # Return
     return(plot)
+    
 }
 ```
 
-## Quick Test
+## Run Prediction {#RunPrediction}
 
-```{r, fig.width=15, fig.height=8, message=FALSE}
-training_output <- let_TrainModel(
-    x_train=trn_img, y_train=trn_cls,
-    input_nodes=dim(trn_img)[2], hidden_nodes=c(100,75,50,30,20), output_nodes=1,
-    initialisation_algorithm="he", initialisation_order=2,
-    activation_hidden="relu", activation_final="sigmoid",
-    batches=56, epochs=10, learning_rate=0.01,
-    verbosity=1, print_learning_curve=TRUE
+The next step is to actually run the prediction. This step is quite self explanatory. The parameters for this function includes the test data, and the trained mode.
+
+```{r Run Prediction, eval=TRUE, echo=TRUE}
+# Create prediction
+Prediction <- get_Prediction(
+    tst_img, 
+    tst_cls, 
+    training_output[["network_model"]], 
+    0.1
 )
+```
 
-get_Prediction(tst_img, tst_cls, training_output[["network_model"]], 0.1) %>% 
-    mutate_at(c("truth","class"), funs(ifelse(.==1,"car","not"))) %>% 
+## View Prediction {#ViewPrediction}
+
+Having created this prediction, it's then necessary to visualise the output. In the same way as the [Check Images](#CheckImages) section, the following code chunk visualises the top 16 images, and returns a label for each.
+
+As seen, the model is clearly able to recognise some, but it also makes mistakes on others.
+
+```{r View Prediction, eval=TRUE, echo=TRUE, fig.width=12, fig.height=12}
+# Define classes
+ClassList <- c("0"="Not", "1"="Car")
+
+# Set list
+lst <- list()
+
+# Loop 16 images
+for (image in 1:16) {
+    lst[[image]] <- plt_PlotImage(
+        cifar$images[-partition,,,], 
+        Prediction[["class"]], 
+        ClassList,
+        image
+    )
+}
+
+# View images
+gridExtra::grid.arrange(grobs=lst, ncol=4)
+```
+
+## Test the Prediction {#TestPrediction}
+
+The next step then is to statistically test the data to see how accurate it may be. For this, the `confusionMatrix()` function (from the `caret` package) used. From this output, it is possible to select the appropriate metric in order for further optimising the neural network.
+
+Since this article is about _showing_ the method, then we will not progress any further is more optimisation here.
+
+```{r Confusion Matrix, eval=TRUE, echo=TRUE}
+# Set Up
+ConfusionMatrix <- Prediction %>% 
+    mutate_at(c("truth","class"), ~ifelse(.==1,"car","not")) %>% 
     select(class,truth) %>% 
     table %>% 
-    caret::confusionMatrix() %>% 
-    (function(x){
-        print(x)
-        return(x)
-    }) %>% 
-    plt_ConfusionMatrix()
+    caret::confusionMatrix()
 
-get_Prediction(tst_img, tst_cls, training_output[["network_model"]]) %>% 
+# Print
+ConfusionMatrix %>% print()
+```
+
+
+
+```{r Plot Test Prediction, eval=TRUE, echo=TRUE, fig.width=5, fig.height=5, message=FALSE}
+# Print
+ConfusionMatrix %>% 
+    plt_ConfusionMatrix()
+```
+
+
+
+```{r Plot ROC, eval=TRUE, echo=TRUE, fig.width=5, fig.height=5, message=FALSE}
+# Print
+Prediction %>% 
     ggplot() +
     plotROC::geom_roc(aes(m=probs, d=truth), n.cuts=0) +
-    plotROC::style_roc(theme=theme_grey) +
+    plotROC::style_roc(
+        theme=theme_grey,
+        ylab="True Positive Rate",
+        xlab="False Positive Rate"
+    ) +
     theme(
         plot.title = element_text(hjust=0.5),
         plot.subtitle = element_text(hjust=0.5)
     ) + 
     labs(
-        title="ROC Curve"
+        title="ROC Curve",
+        y="True Positive Rate",
+        x="False Positive Rate"
     )
-
 ```
+
+
 
 ## Run `Xavier`
 
@@ -2042,38 +2087,43 @@ get_Prediction(tst_img, tst_cls, training_output[["network_model"]]) %>%
 ```
 
 
-
-$$ \begin{bmatrix} `r matrix(1:12, ncol=3)` \end{bmatrix} $$
-
-```{r, fig.width=15, fig.height=8}
-# training_output <- let_TrainModel(
-#     x_train=trn_img, y_train=trn_cls,
-#     input_nodes=dim(trn_img)[2], hidden_nodes=c(1000,500,100,50,10), output_nodes=1,
-#     initialisation_algorithm="he", initialisation_order=2,
-#     activation_hidden="relu", activation_final="sigmoid",
-#     batches=56, epochs=1000, learning_rate=0.001,
-#     verbosity=100
-# )
-```
-
-
 # Predict
 
 ## Set Up
 
-```{r, fig.width=6, fig.height=5}
-# library(ROCR)
-# pred <- get_Prediction(tst_img, tst_cls, training_output[["network_model"]])
-# pred <- prediction(pred$probs, pred$truth)
-# rocr <- performance(pred, measure="tpr", x.measure="fpr")
-# plot(rocr)
-# get_Prediction(tst_img, tst_cls, training_output[["network_model"]]) %>% 
-#     prediction(.["probs"], .["truth"]) #%>% 
-#     performance(measure="tpr", x.measure="fpr") %>% 
-#     plot()
+```{r}
+get_Prediction <- function(x_test, y_test, network_model, threshold=0.5) {
+    
+    # Create prediction
+    predic <- set_ForwardProp(
+        network_model=network_model, 
+        data_in=x_test, 
+        activation_hidden="relu", 
+        activation_final="sigmoid"
+    )
+    
+    # Extract probabilities
+    probas <- predic %>% 
+        extract2("output") %>% 
+        extract2("acti")
+    
+    # Define results
+    result <- data.frame(
+        probs=probas,
+        truth=y_test
+    )
+    
+    # Add class
+    result %<>% 
+        mutate(class=ifelse(probas>threshold, 1, 0))
+    
+    # Return
+    return(result)
+    
+}
 
-library(plotROC)
 ```
+
 
 ```{r, fig.width=6, fig.height=5}
 get_Prediction(tst_img, tst_cls, training_output[["network_model"]], 0.1) %>% 

@@ -365,7 +365,7 @@ set_MakeImage <- function(image, index=1) {
 }
 
 
-plt_PlotImage <- function(images, classes, index=1) {
+plt_PlotImage <- function(images, classes, class_list, index=1) {
     #' @title Plot Image from a given 4-D block of images
     #' @description Plot a specific image from a given 4-D block of images.
     #' @note `images` must be a 4-D array, the same as returned from the function `tensorflow::tf$keras$datasets$cifar10$load_data()[[2]][[1]]`.
@@ -398,7 +398,7 @@ plt_PlotImage <- function(images, classes, index=1) {
     # Slice images
     image <- images[index,,,]
     image %<>% set_MakeImage(index)
-    lbl <- classes %>% extract(index) %>% as.character() %>% ClassList[[.]]
+    lbl <- classes %>% extract(index) %>% as.character() %>% class_list[[.]]
     
     # Create plot
     plot <- ggplot() + 
@@ -407,7 +407,7 @@ plt_PlotImage <- function(images, classes, index=1) {
     
     # Return
     return(plot)
-
+    
 }
 
 get_PrintNetwork <- function(network_model) {
@@ -863,7 +863,7 @@ get_ModelParametersCount <- function(network_model) {
             assert_that(name %>% as.numeric %>% is.integer, msg="Each hidden layer in 'network_model' must be an integer value.")
         }
     }
-
+    
     # Instantiate variable
     params <- 0
     
@@ -1972,7 +1972,9 @@ get_Prediction <- function(x_test, y_test, network_model, threshold=0.5) {
     )
     
     # Extract probabilities
-    probas <- predic[["output"]][["acti"]]
+    probas <- predic %>% 
+        extract2("output") %>% 
+        extract2("acti")
     
     # Define results
     result <- data.frame(
@@ -1986,6 +1988,7 @@ get_Prediction <- function(x_test, y_test, network_model, threshold=0.5) {
     
     # Return
     return(result)
+    
 }
 
 
