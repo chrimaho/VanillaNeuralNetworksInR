@@ -619,6 +619,7 @@ set_InstantiateNetwork <- function(input=50, hidden=c(30,20,10), output=1) {
     
     # Return
     return(model)
+    
 }
 
 
@@ -656,6 +657,7 @@ let_InitialiseXavier <- function(nodes_in, nodes_out, order=6) {
     
     # Return
     return(output)
+    
 }
 
 
@@ -691,6 +693,7 @@ let_InitialiseHe <- function(nodes_in, nodes_out, order=2) {
     
     # Return
     return(output)
+    
 }
 
 
@@ -732,9 +735,13 @@ set_InitialiseLayer <- function(network_model, layer_index, initialisation_algor
     if (layer_index == 1) {
         nodes_in <- 0 #First layer is 'input'; therefore, there are 0 nodes feeding in to it.
     } else {
-        nodes_in <- network_model %>% extract2(layer_prev) %>% extract2("nodz")
+        nodes_in <- network_model %>% 
+            extract2(layer_prev) %>% 
+            extract2("nodz")
     }
-    nodes_out <- network_model %>% extract2(layer) %>% extract2("nodz")
+    nodes_out <- network_model %>% 
+        extract2(layer) %>% 
+        extract2("nodz")
     
     # Set the seed of reproducibility
     set.seed(1234)
@@ -748,7 +755,10 @@ set_InitialiseLayer <- function(network_model, layer_index, initialisation_algor
     
     # Get initialisation algorithm
     if (!is.na(initialisation_algorithm)) {
-        algorithm <- paste0("let_Initialise", str_to_title(initialisation_algorithm))
+        algorithm <- paste0(
+            "let_Initialise", 
+            str_to_title(initialisation_algorithm)
+        )
     }
     
     # Scale weights
@@ -757,14 +767,23 @@ set_InitialiseLayer <- function(network_model, layer_index, initialisation_algor
             w_matrix <- w_matrix
         } else {
             w_matrix <- w_matrix * 
-                get(algorithm)(nodes_in=nodes_in, nodes_out=nodes_out, order=initialisation_order)
+                get(algorithm)(
+                    nodes_in=nodes_in, 
+                    nodes_out=nodes_out, 
+                    order=initialisation_order
+                )
         }
     }
     
     # Initialise bias matrix
     b_matrix <- matrix(
-        data=network_model %>% extract2(layer) %>% extract2("nodz") %>% replicate(0),
-        nrow=network_model %>% extract2(layer) %>% extract2("nodz"),
+        data=network_model %>% 
+            extract2(layer) %>% 
+            extract2("nodz") %>% 
+            replicate(0),
+        nrow=network_model %>% 
+            extract2(layer) %>% 
+            extract2("nodz"),
         ncol=1
     )
     
@@ -774,6 +793,7 @@ set_InitialiseLayer <- function(network_model, layer_index, initialisation_algor
     
     # Return
     return(network_model)
+    
 }
 
 
@@ -883,6 +903,7 @@ get_ModelParametersCount <- function(network_model) {
     
     # Return the number of params
     return(params)
+    
 }
 
 #------------------------------------------------------------------------------#
@@ -928,6 +949,7 @@ set_LinearForward <- function(inpt, wgts, bias) {
     
     # Return
     return(linr)
+    
 }
 
 
@@ -958,6 +980,7 @@ let_ActivateSigmoid <- function(linr) {
     
     # Return
     return(acti)
+    
 }
 
 
@@ -988,6 +1011,7 @@ let_ActivateRelu <- function(linr) {
     
     # Return
     return(acti)
+    
 }
 
 
@@ -1019,6 +1043,7 @@ let_ActivateSoftmax <- function(linr) {
     
     # Return
     return(acti)
+    
 }
 
 
@@ -1050,6 +1075,7 @@ let_ActivateSwish <- function(linr, beta=0.1) {
     
     # Return
     return(acti)
+    
 }
 
 
@@ -1097,7 +1123,9 @@ set_ForwardProp <- function(network_model, data_in, activation_hidden="relu", ac
     for (index in network_model %>% names() %>% length() %>% 1:.) {
         
         # Define layer name
-        layr <- network_model %>% names() %>% extract(index)
+        layr <- network_model %>% 
+            names() %>% 
+            extract(index)
         
         if (layr=="input") {
             
@@ -1109,20 +1137,32 @@ set_ForwardProp <- function(network_model, data_in, activation_hidden="relu", ac
             
             # Extract data
             prev <- names(network_model)[index-1]
-            inpt <- network_model %>% extract2(prev) %>% extract2("acti")
-            wgts <- network_model %>% extract2(layr) %>% extract2("wgts")
-            bias <- network_model %>% extract2(layr) %>% extract2("bias")
+            inpt <- network_model %>% 
+                extract2(prev) %>%
+                extract2("acti")
+            wgts <- network_model %>% 
+                extract2(layr) %>%
+                extract2("wgts")
+            bias <- network_model %>% 
+                extract2(layr) %>%
+                extract2("bias")
             
             # Calculate
             linr <- set_LinearForward(inpt, wgts, bias)
             
             # Activate
             if (layr=="output") {
-                func <- activation_final %>% str_to_title() %>% paste0("let_Activate", .) %>% get()
+                func <- activation_final %>% 
+                    str_to_title() %>% 
+                    paste0("let_Activate", .) %>% 
+                    get()
                 acti <- func(linr)
                 network_model[[layr]][["acti_func"]] <- activation_final
             } else {
-                func <- activation_hidden %>% str_to_title() %>% paste0("let_Activate", .) %>% get()
+                func <- activation_hidden %>% 
+                    str_to_title() %>% 
+                    paste0("let_Activate", .) %>% 
+                    get()
                 acti <- func(linr)
                 network_model[[layr]][["acti_func"]] <- activation_hidden
             }
@@ -1184,7 +1224,12 @@ get_ComputeCost <- function(pred, true, epsi=1e-10) {
         if (pred[i]==0) {pred[i] %<>% add(epsi)}
         
         # Calculate totals
-        total_cost <- total_cost - ((true[i] * log(pred[i]) + (1-true[i]) * log(1-pred[i])))
+        total_cost <- total_cost - 
+            (
+                true[i] * log(pred[i]) 
+                + 
+                (1-true[i]) * log(1-pred[i])
+            )
         
     }
     
@@ -1193,6 +1238,7 @@ get_ComputeCost <- function(pred, true, epsi=1e-10) {
     
     # Return
     return(cost)
+    
 }
 
 
@@ -1233,6 +1279,7 @@ set_ApplyCost <- function(network_model, cost) {
     
     # Return
     return(network_model)
+    
 }
 
 
@@ -1270,6 +1317,7 @@ get_DifferentiateCost <- function(pred, true) {
     
     # Return
     return(diff_cost)
+    
 }
 
 
@@ -1381,6 +1429,7 @@ let_BackwardActivateSigmoid <- function(diff_acti_curr, linr_curr) {
     
     # Return
     return(t(diff_linr_curr))
+    
 }
 
 
@@ -1434,6 +1483,7 @@ get_DifferentiateLinear <- function(back_linr_curr, acti_prev, wgts, bias) {
     
     # Return
     return(list_linr)
+    
 }
 
 
@@ -1564,17 +1614,30 @@ set_UpdateModel <- function(network_model, learning_rate=0.001) {
         if (layr=="input") next
         
         # Define gradient steps
-        grad_step_wgts <- -1 * (learning_rate * network_model[[layr]][["back_wgts"]])
-        grad_step_bias <- -1 * (learning_rate * network_model[[layr]][["back_bias"]])
+        grad_step_wgts <- -1 * 
+            (
+                learning_rate * network_model[[layr]][["back_wgts"]]
+            )
+        grad_step_bias <- -1 * 
+            (
+                learning_rate * network_model[[layr]][["back_bias"]]
+            )
         
         # Take steps
-        network_model[[layr]][["wgts"]] <- network_model[[layr]][["wgts"]] + t(grad_step_wgts)
-        network_model[[layr]][["bias"]] <- network_model[[layr]][["bias"]] + grad_step_bias
+        network_model[[layr]][["wgts"]] <- network_model %>% 
+            extract2(layr) %>% 
+            extract2("wgts") %>% 
+            add(t(grad_step_wgts))
+        network_model[[layr]][["bias"]] <- network_model %>% 
+            extract2(layr) %>% 
+            extract2("bias") %>% 
+            add(grad_step_bias)
         
     }
     
     # Return
     return(network_model)
+    
 }
 
 
@@ -1841,7 +1904,10 @@ let_TrainModel <- function(
             # Differentiate cost
             network_model <- set_ApplyDifferentiateCost(
                 network_model=network_model, 
-                get_DifferentiateCost(network_model[["output"]][["acti"]], y_train_batch)
+                get_DifferentiateCost(
+                    network_model[["output"]][["acti"]], 
+                    y_train_batch
+                )
             )
             
             # Backprop
@@ -1890,10 +1956,16 @@ let_TrainModel <- function(
                     extract2("results") %>% 
                     extract2("cost") %>% 
                     plt_PlotLearningCurve(
-                        input_nodes=input_nodes, hidden_nodes=hidden_nodes, output_nodes=output_nodes,
-                        initialisation_algorithm=initialisation_algorithm, initialisation_order=initialisation_order,
-                        activation_hidden=activation_hidden, activation_final=activation_final,
-                        epochs=epochs, learning_rate=learning_rate, verbosity=verbosity,
+                        input_nodes=input_nodes, 
+                        hidden_nodes=hidden_nodes, 
+                        output_nodes=output_nodes,
+                        initialisation_algorithm=initialisation_algorithm, 
+                        initialisation_order=initialisation_order,
+                        activation_hidden=activation_hidden, 
+                        activation_final=activation_final,
+                        epochs=epochs, 
+                        learning_rate=learning_rate, 
+                        verbosity=verbosity,
                         run_time=get_TimeDifference(time_begin)
                     ) %>% 
                     print()
@@ -1982,9 +2054,9 @@ get_Prediction <- function(x_test, y_test, network_model, threshold=0.5) {
         truth=y_test
     )
     
-    # Add class
+    # Add prdic
     result %<>% 
-        mutate(class=ifelse(probas>threshold, 1, 0))
+        mutate(prdic=ifelse(probas>threshold, 1, 0))
     
     # Return
     return(result)
@@ -2039,4 +2111,5 @@ plt_ConfusionMatrix <- function(confusion_matrix) {
     
     # Return
     return(plot)
+    
 }

@@ -203,9 +203,9 @@ source("../Functions/functions.R")
 The dataset to be used is the [CIFAR-10](https://www.cs.toronto.edu/~kriz/cifar.html) dataset. It's chosen for a number of reasons, including:
 
 1. The data is on images, which is ideal for Deep Learning purposes;
-1. There are a decent number of images included (60,000 images in total);
-1. All images are the same the same size (32x32 pixels);
-1. The images have been categorised in to 10 different classes; and
+1. There are a decent number of images included ($60,000$ images in total);
+1. All images are the same the same size ($32$x$32$ pixels);
+1. The images have been categorised in to `10` different classes; and
 1. It's easily accessible through the `TensorFlow` package.
 
 The following code chunk has the following process steps:
@@ -234,7 +234,7 @@ The following code chunk has the following process steps:
     
     * This data does not have any names, so therefore the names are set by using the `set_names()` function.
 
-```{r Get Data, eval=TRUE, echo=TRUE, messages=FALSE, errors=FALSE}
+```{r Get Data, eval=TRUE, echo=TRUE, messages=FALSE, errors=FALSE, warning=FALSE}
 # Download Data
 # NOTE:
 # - The first time you run this function, it download everything.
@@ -269,7 +269,7 @@ ClassList <- c(
 
 ## Check Objects {#CheckObjects}
 
-It is important to check the data, to ensure that it has been generated correctly, and all the information looks okay. For this, a custom-function is written (`get_ObjectAttributes()`), the source code for which can be found [here](https://github.com/chrimaho/VanillaNeuralNetworksInR/blob/master/Functions/functions.R). As seen by the following code chunk, the `images` object is a 4-Dimensional numeric array, with `10,000` images, each `32x32` pixels, and `3` colour elements. The entire object is over `117 Mb` large.
+It is important to check the data, to ensure that it has been generated correctly, and all the information looks okay. For this, a custom-function is written (`get_ObjectAttributes()`), the source code for which can be found [here](https://github.com/chrimaho/VanillaNeuralNetworksInR/blob/master/Functions/functions.R). As seen by the following code chunk, the `images` object is a 4-Dimensional numeric array, with `10,000` images, each `32`x`32` pixels, and `3` colour elements. The entire object is over `117 Mb` large.
 
 ```{r Check Images Data, eval=TRUE, echo=TRUE, message=FALSE, warning=FALSE}
 # Check Images
@@ -286,7 +286,7 @@ When checking the `classes` object, it is a 2-Dimensional numeric array (with on
 cifar %>% 
     extract2("classes") %>% 
     get_ObjectAttributes(name="cifar$classes", print_freq=TRUE) %>% 
-    cat
+    cat()
 ```
 
 ## Check Images {#CheckImages}
@@ -304,13 +304,19 @@ set_MakeImage <- function(image, index=1) {
     image.b <- image[,,3]
     
     # Make rgb
-    image.rgb <- rgb(image.r, image.g, image.b, maxColorValue=255)
+    image.rgb <- rgb(
+        image.r, 
+        image.g, 
+        image.b, 
+        maxColorValue=255
+    )
     
     # Fix dimensions
     dim(image.rgb) <- dim(image.r)
     
     # Return
     return(image.rgb)
+    
 }
 ```
 
@@ -320,7 +326,10 @@ plt_PlotImage <- function(images, classes, class_list, index=1) {
     # Slice images
     image <- images[index,,,]
     image %<>% set_MakeImage(index)
-    lbl <- classes %>% extract(index) %>% as.character() %>% class_list[[.]]
+    lbl <- classes %>% 
+        extract(index) %>% 
+        as.character() %>% 
+        class_list[[.]]
     
     # Create plot
     plot <- ggplot() + 
@@ -329,22 +338,31 @@ plt_PlotImage <- function(images, classes, class_list, index=1) {
     
     # Return
     return(plot)
+    
 }
 ```
 
-When the function is run on the top 16 images, the following is displayed. As shown, the images are extremely pixelated (which is expected, as they are only 32x32 pixels each), and you can see how each of the images are categorised.
+When the function is run on the top 16 images, the following is displayed. As shown, the images are extremely pixelated (which is expected, as they are only `32`x`32` pixels each), and you can see how each of the images are categorised.
 
-```{r View Images, eval=TRUE, echo=TRUE, fig.width=12, fig.height=12}
+```{r View Images, eval=TRUE, echo=TRUE, fig.width=12, fig.height=12, message=FALSE}
 # Set list
 lst <- list()
 
 # Loop 16 images
 for (index in 1:16) {
-    lst[[index]] <- plt_PlotImage(cifar$images, cifar$classes, ClassList, index)
-}
+    lst[[index]] <- plt_PlotImage(
+        cifar$images, 
+        cifar$classes, 
+        ClassList, index)
+    }
 
 # View images
-gridExtra::grid.arrange(grobs=lst, ncol=4)
+plt <- gridExtra::grid.arrange(grobs=lst, ncol=4)
+```
+
+```{r Save View Images, eval=TRUE, echo=FALSE, message=FALSE}
+# Save output
+ggsave("./Images/ViewImages.jpg", plt)
 ```
 
 # Prepare the Data {#PrepareData}
@@ -369,13 +387,13 @@ cifar[["classes"]] <- cifar %>%
     (function(classes){
         
         # View initial classes
-        classes %>% as.vector %>% head(40) %>% print
+        classes %>% as.vector %>% head(40) %>% print()
         
         # Reclassify
         classes <- ifelse(classes==1,1,0)
         
         # View reclassified classes
-        classes %>% as.vector %>% head(40) %>% print
+        classes %>% as.vector %>% head(30) %>% print()
         
         # Return
         return(classes)
@@ -388,7 +406,8 @@ The next task is to split the data in to a training and testing set. The reason 
 
 Firstly, to get an appreciation of the current split of the data, the following code chunk visualises this data using the `ggplot2` package. As show, the data is currently distributed with `90%` with the class `0`, and the remaining `10%` with the class `1`.
 
-```{r Plot Original Classes, eval=TRUE, echo=TRUE}
+```{r Plot Original Classes, eval=TRUE, echo=TRUE, message=FALSE}
+# Print Plot
 cifar %>% 
     extract("classes") %>% 
     table(dnn="classes") %>% 
@@ -404,6 +423,11 @@ cifar %>%
         labs(
             title="Count of Each Class"
         )
+```
+
+```{r Save Plot Original Classes, eval=TRUE, echo=FALSE, message=FALSE}
+# Save Plot
+ggsave("./Images/PlotOriginalClasses.jpg")
 ```
 
 To implement this data splitting, we are using the `caret::createDataPartition()` function. This creates a `partition` object, which is then used to segregate the `cifar` data accordingly. The proportion of splitting was arbitrarily chosen at `70%` for training, and the remaining for testing. However, it could be justified for this to be `80%`; this a is hyperparameter which can be tweaked at a later stage.
@@ -424,7 +448,8 @@ tst_cls <- cifar$classes[-partition]
 
 After splitting, the data is re-plotted, and the train/test split is easily seen to have achieved an even `70%` distribution over the two classes.
 
-```{r Plot Split Classes, eval=TRUE, echo=TRUE}
+```{r Plot Split Classes, eval=TRUE, echo=TRUE, message=FALSE}
+# Print Plot
 rbind(
     trn_cls %>% table,
     tst_cls %>% table
@@ -453,22 +478,31 @@ rbind(
         )
 ```
 
+```{r Save Plot Split Classes, eval=TRUE, echo=FALSE, message=FALSE}
+# Save Plot
+ggsave("./Images/PlotSplitClasses.jpg")
+```
+
 Another method for checking that the data has been split properly, is to again run the `get_ObjectAttributes()` function, as shown in the following code chunk. The information shown here is consistent with the plot above. It is also interesting to note that the Training Image array is `82 Mb` large, which will be important to know for later checking the performance of forward propagation.
 
 ```{r Check Splitting, eval=TRUE, echo=TRUE}
 for (name in c("trn_img","tst_img","trn_cls","tst_cls")) {
-    get_ObjectAttributes(
-        get(name), 
-        name, 
-        if (name %in% c("trn_cls","tst_cls")) TRUE else FALSE
-    ) %>% 
-        cat
+    name %>% 
+        get() %>% 
+        get_ObjectAttributes(
+            name, 
+            if (name %in% c("trn_cls","tst_cls")) TRUE else FALSE
+        ) %>% 
+        cat()
+    if (name != "tst_cls") cat("\n")
 }
 ```
 
 ## Reshape Data {#ReshapeData}
 
-For the first `input` layer of our Neural Network, we want to be a single dimension of nodes. Therefore, it is necessary to reshape the data from a 4-Dimensional array in to a 2-Dimensional array. This can be done quite easily with the `array()` function, as it has the `dim=` argument which can be used to specify the dimensions required.
+For the first `input` layer of our Neural Network, we want to be a single dimension of nodes. Therefore, it is necessary to reshape the data from a 4-Dimensional array in to a 2-Dimensional array. This process is called Flattening, and more information can be found here: [Memory Layout of Multi-Dimensional Arrays](https://eli.thegreenplace.net/2015/memory-layout-of-multi-dimensional-arrays).
+
+The implementation of this method can be done quite easily with the `array()` function, as it has the `dim=` argument which can be used to specify the dimensions required.
 
 The desired matrix size should have each _image_ in a new row, and each _pixel_ on a different column. Because each pixel is comprised of the 2nd, 3rd and 4th dimensions, we need to take the _product_ of these three numbers, and use that to specify the desired number of columns. Effectively, we are running the equation: $32\times32\times3$, which equates to having $3072$ columns. This equation is implemented programmatically in-line, in the next code chunk.
 
@@ -499,7 +533,11 @@ When checking the object attributes once again, you will see that the image data
 
 ```{r Check Data Shapes, eval=TRUE, echo=TRUE}
 for (name in c("trn_img","tst_img","trn_cls","tst_cls")) {
-    get_ObjectAttributes(get(name), name, FALSE) %>% cat 
+    name %>% 
+        get() %>% 
+        get_ObjectAttributes(name, FALSE) %>% 
+        cat()
+    if (name != "tst_cls") cat("\n")
 }
 ```
 
@@ -509,7 +547,7 @@ The final step to preparing the data is to standardise the data so that all the 
 
 As documented on the [TensorFlow](https://www.tensorflow.org/api_docs/python/tf/keras/datasets/cifar10/load_data) website, the [CIFAR10](https://www.cs.toronto.edu/~kriz/cifar.html) data set consists of RGB Image data. And, as documented on [Wikipedia](https://en.wikipedia.org/wiki/RGB_color_model), RGB data are all values between `0` and `255`.
 
-Therefore, what is necessary to do is to divide all the elements by `255`, and they will inevitably result in a value between `0` and `1`. As the image data is currently in an array, the function in the below code chunk will run as a _vectorised function_ over the entire array, dividing all elements by 255 accordingly.
+Therefore, what is necessary to do is to divide all the elements by `255`, and they will inevitably result in a value between `0` and `1`. As the image data is currently in an array, the function in the below code chunk will run as a _vectorised function_ over the entire array, dividing all elements by `255` accordingly.
 
 ```{r Standardise Data, eval=TRUE, echo=TRUE}
 trn_img <- trn_img/255
@@ -520,7 +558,7 @@ The data is now ready for the network. Next step is to build the network.
 
 # Instantiate the Network {#InstantiateNetwork}
 
-## Set the Architecture {#SetArchitecture}
+## Define the Architecture {#DefineArchitecture}
 
 Some quick notes on what the Network will _actually_ be:
 
@@ -545,7 +583,7 @@ Some quick notes on what the Network will _actually_ be:
     * `back_wgts` : Gradient of the Weights matrix. Aka `dW`. Also the result of back-prop. 
     * `back_bias` : Gradient of the Bias vector. Aka `db`. Also the result of back-prop. 
 
-### Set the Instantiation Function {#SetInstantiationFunction}
+## Set the Instantiation Function {#SetInstantiationFunction}
 
 For the below code chunk, the function `set_InstantiateNetwork()` is defined. It only has three input arguments, which specify the number of nodes to be used in each layer. Based on this information, the model will be instantiated and returned, ready for initialisation, in the next step.
 
@@ -598,16 +636,17 @@ set_InstantiateNetwork <- function(
     
     # Return
     return(model)
+    
 }
 ```
 
-### Create the Network {#CreateNetwork}
+## Create the Network {#CreateNetwork}
 
 The below code chunk instantiates the network. The model will be set up with the following number of nodes in each layer:
 
 * The `input` layer will have `3072` nodes, the same number calculated above.
 * Each `hidden` layer will have a decreasing number of nodes, from `100` down to `20` notes.
-* The `output` layer will have 1 node, because this one node will be a floating point number betwee `0` and `1`, which will be used to predict whether the relevant image is a `car` or `not`.
+* The `output` layer will have `1` node, because this one node will be a floating point number between `0` and `1`, which will be used to predict whether the relevant image is a `car` or `not`.
 
 ```{r Instantiate Network, eval=TRUE, echo=TRUE}
 network_model <- set_InstantiateNetwork(
@@ -617,13 +656,13 @@ network_model <- set_InstantiateNetwork(
 )
 ```
 
-### Visualise the Network {#VisualiseNetwork}
+## Visualise the Network {#VisualiseNetwork}
 
 There is a very good website available which allows Neural Networks to be visualised: [http://alexlenail.me/NN-SVG/AlexNet.html](http://alexlenail.me/NN-SVG/AlexNet.html). The below image is a representation of the network that has just been created.
 
-Further visualisation can be conducted once the network is fully initialised and forward propagated. See section [Check Shapes](#CheckShapes) for more details
+Further visualisation can be conducted once the network is fully initialised and forward propagated. See section [Check Model Shapes](#CheckShapes) for more details.
 
-![*Figure 1: Network Architecture*](./Images/Network Architecture.png)
+![*Network Architecture*](./Images/Network Architecture.png)
 
 # Initialise the Network {#InitialiseNetwork}
 
@@ -666,9 +705,9 @@ $$
 
 Where: 
 
-* $n_i$ is the number of nodes coming in to this layer.
+* $n_i$ is the number of nodes coming in to this layer. Aka "fan-in".
 
-### Initialisation Functions {#InitialisationFunctions}
+## Initialisation Functions {#InitialisationFunctions}
 
 For programmatic purposes, these functions are written with the `order` value as part of the function arguments. This means that the order of magnitude of the equation can be altered at a later stage and used as a hyperparameter.
 
@@ -682,6 +721,7 @@ let_InitialiseXavier <- function(nodes_in, nodes_out, order=6) {
     
     # Return
     return(output)
+    
 }
 ```
 
@@ -695,6 +735,7 @@ let_InitialiseHe <- function(nodes_in, nodes_out, order=2) {
     
     # Return
     return(output)
+    
 }
 ```
 
@@ -715,7 +756,7 @@ The steps for the layer construction are as follows:
     * Each element is created using the `rnorm()` function, which generates a random number on the normal curve, with $\mu=0$ and $\sigma=1$.
 1. Determine the Initialisation Algorithm to be used.
     * The value value parsed in to this function is a lower-case word associated with the relevant algorithm.
-    * It is coerced to a Title capitalisation, and then given the prefix `let_Initialisation`.
+    * It is coerced to a Title capitalisation, and then given the prefix `let_Initialisation()`.
     * The value is then parsed in to the `get()` function, which then calls the function, and executes the parameters parsed to it.
     * This is a programmatic way to flexibly call different algorithms, based on values parsed to the function.
 1. Scale the Weight matrix.
@@ -749,11 +790,15 @@ set_InitialiseLayer <- function(
     
     # Get number of nodes
     if (layer_index == 1) {
-        nodes_in <- 0 #First layer is 'input'; therefore, there are 0 nodes feeding in to it.
+        nodes_in <- 0 #First layer is 'input'
     } else {
-        nodes_in <- network_model %>% extract2(layer_prev) %>% extract2("nodz")
+        nodes_in <- network_model %>% 
+            extract2(layer_prev) %>% 
+            extract2("nodz")
     }
-    nodes_out <- network_model %>% extract2(layer) %>% extract2("nodz")
+    nodes_out <- network_model %>% 
+        extract2(layer) %>% 
+        extract2("nodz")
     
     # Set the seed of reproducibility
     set.seed(1234)
@@ -767,7 +812,10 @@ set_InitialiseLayer <- function(
     
     # Get initialisation algorithm
     if (!is.na(initialisation_algorithm)) {
-        algorithm <- paste0("let_Initialise", str_to_title(initialisation_algorithm))
+        algorithm <- paste0(
+            "let_Initialise", 
+            str_to_title(initialisation_algorithm)
+        )
     }
     
     # Scale weights
@@ -786,8 +834,13 @@ set_InitialiseLayer <- function(
     
     # Initialise bias matrix
     b_matrix <- matrix(
-        data=network_model %>% extract2(layer) %>% extract2("nodz") %>% replicate(0),
-        nrow=network_model %>% extract2(layer) %>% extract2("nodz"),
+        data=network_model %>% 
+            extract2(layer) %>% 
+            extract2("nodz") %>% 
+            replicate(0),
+        nrow=network_model %>% 
+            extract2(layer) %>% 
+            extract2("nodz"),
         ncol=1
     )
     
@@ -797,6 +850,7 @@ set_InitialiseLayer <- function(
     
     # Return
     return(network_model)
+    
 }
 ```
 
@@ -842,6 +896,7 @@ set_InitialiseModel <- function(
     
     # Return
     return(network_model)
+    
 }
 ```
 
@@ -871,11 +926,11 @@ There are over `320,000` parameters in this neural network. Every single one of 
 
 ## The Theory {#TheTheory}
 
-There is a very good website which outlines what actually happens during a matrix manipulation: [Matrix Manipulation](http://matrixmultiplication.xyz/).
+There is a very good website which outlines what actually happens during a matrix multiplication: [Matrix Multiplication](http://matrixmultiplication.xyz/).
 
 The theory for the forward propagation method is as follows:
 
-1. Apply matrix manipulation
+1. Apply matrix multiplication
     1. The first matrix is the activation matrix from the previous layer.
     1. The second matrix is the weight matrix for the current layer.
     1. The third matrix is the (first) linear activation matrix for the current layer.
@@ -893,10 +948,8 @@ The theory for the forward propagation method is as follows:
 To illustrate, the following matrices shows the first step of the forward propagation, using fictitious numbers.
 
 $$
-[Matrix_{input}] \times [Matrix_{weight}] = [Matrix_{layer}]
-$$
-
-$$
+[Matrix_{input}] \times [Matrix_{weight}] = [Matrix_{layer}] \\
+\\ 
 \begin{bmatrix}
  1 &  2 &  3 \\
  4 &  5 &  6 \\
@@ -922,7 +975,7 @@ $$
 \end{bmatrix}
 $$
 
-The below code shows how this process is implemented programatically.
+The below code shows how this process is implemented programmatically.
 
 ```{r Run Step One of Matrix Algebra, eval=TRUE, echo=TRUE}
 # Declare First matrix
@@ -941,7 +994,7 @@ matrix_weight <- matrix(
     byrow=TRUE
 )
 
-# Apply matrix manipulation
+# Apply matrix multiplication
 matrix_layer <- matrix_input %*% matrix_weight
 ```
 ```{r Print Step One of Matrix Algebra, eval=TRUE, echo=FALSE}
@@ -958,10 +1011,8 @@ matrix_layer
 The next diagram shows how the bias matrix is applied. As shown, each element in the bias matrix is applied horizontally to each element of the initial matrix. This diagram shows how it works.
 
 $$
-[Matrix_{layer}] + [Vector_{bias}] = [Matrix_{biased}]
-$$
-
-$$
+[Matrix_{layer}] + [Vector_{bias}] = [Matrix_{biased}] \\ 
+\\ 
 \begin{bmatrix}
  46 &  52 &  58 &  64 &  70 \\
 100 & 115 & 130 & 145 & 160 \\
@@ -992,7 +1043,7 @@ $$
 \end{bmatrix}
 $$
 
-The below code shows how this process is implemented programatically.
+The below code shows how this process is implemented programmatically.
 
 ```{r Run Step Two of Matrix Algebra, eval=TRUE, echo=TRUE}
 # Declare Bias matrix
@@ -1015,10 +1066,8 @@ matrix_biased
 The activation function is one which is defined at the time of running the function. The algorithm is applied to each element of the initial matrix. In this instance, a simple multiplication of the initial matrix is matrix.
 
 $$
-[Matrix_{biased}] \times Activation = [Matrix_{output}]
-$$
-
-$$
+[Matrix_{biased}] \times Activation = [Matrix_{output}] \\ 
+\\ 
 \begin{bmatrix}
  47 &  53 &  59 &  65 &  71 \\
 102 & 117 & 132 & 147 & 162 \\
@@ -1040,7 +1089,7 @@ $$
 \end{bmatrix}
 $$
 
-The below code shows how this process is implemented programatically.
+The below code shows how this process is implemented programmatically.
 
 ```{r Run Step Three of Matrix Algebra, eval=TRUE, echo=TRUE}
 # Apply Activation function
@@ -1068,6 +1117,7 @@ set_LinearForward <- function(inpt, wgts, bias) {
     
     # Return
     return(linr)
+    
 }
 ```
 
@@ -1102,6 +1152,7 @@ let_ActivateSigmoid <- function(linr) {
     
     # Return
     return(acti)
+    
 }
 ```
 ```{r Model Function: Set Activation Relu, eval=FALSE, echo=TRUE}
@@ -1113,6 +1164,7 @@ let_ActivateRelu <- function(linr) {
     
     # Return
     return(acti)
+    
 }
 ```
 ```{r Model Function: Set Activation Softmax, eval=FALSE, echo=TRUE}
@@ -1125,6 +1177,7 @@ let_ActivateSoftmax <- function(linr) {
     
     # Return
     return(acti)
+    
 }
 ```
 ```{r Model Function: Set Activation Swish, eval=FALSE, echo=TRUE}
@@ -1135,6 +1188,7 @@ let_ActivateSwish <- function(linr, beta=0.1) {
     
     # Return
     return(acti)
+    
 }
 ```
 
@@ -1175,7 +1229,9 @@ set_ForwardProp <- function(
     for (index in network_model %>% names() %>% length() %>% 1:.) {
         
         # Define layer name
-        layr <- network_model %>% names() %>% extract(index)
+        layr <- network_model %>% 
+            names() %>% 
+            extract(index)
         
         if (layr=="input") {
             
@@ -1187,20 +1243,32 @@ set_ForwardProp <- function(
             
             # Extract data
             prev <- names(network_model)[index-1]
-            inpt <- network_model %>% extract2(prev) %>% extract2("acti")
-            wgts <- network_model %>% extract2(layr) %>% extract2("wgts")
-            bias <- network_model %>% extract2(layr) %>% extract2("bias")
+            inpt <- network_model %>% 
+                extract2(prev) %>% 
+                extract2("acti")
+            wgts <- network_model %>% 
+                extract2(layr) %>% 
+                extract2("wgts")
+            bias <- network_model %>% 
+                extract2(layr) %>% 
+                extract2("bias")
             
             # Calculate
             linr <- set_LinearForward(inpt, wgts, bias)
             
             # Activate
             if (layr=="output") {
-                func <- activation_final %>% str_to_title() %>% paste0("let_Activate", .) %>% get()
+                func <- activation_final %>% 
+                    str_to_title() %>% 
+                    paste0("let_Activate", .) %>% 
+                    get()
                 acti <- func(linr)
                 network_model[[layr]][["acti_func"]] <- activation_final
             } else {
-                func <- activation_hidden %>% str_to_title() %>% paste0("let_Activate", .) %>% get()
+                func <- activation_hidden %>% 
+                    str_to_title() %>% 
+                    paste0("let_Activate", .) %>% 
+                    get()
                 acti <- func(linr)
                 network_model[[layr]][["acti_func"]] <- activation_hidden
             }
@@ -1230,7 +1298,7 @@ network_model %<>% set_ForwardProp(trn_img, "relu", "sigmoid")
 toc()
 ```
 
-As mentioned above in the [Split Data](#SplitData) section, the `trn_img` object is over `82 Mb` large. The entire end-to-end process for forward propagation took only `3 seconds` to run; which is quite impressive, and is a testament to the power of mathematics.
+As mentioned above in the [Split Data](#SplitData) section, the `trn_img` object is over `82 Mb` large. The entire end-to-end process for forward propagation took only `7 seconds` to run; which is quite impressive, and is a testament to the power of mathematics.
 
 ## Check Model Shapes {#CheckShapes}
 
@@ -1270,7 +1338,12 @@ get_ComputeCost <- function(pred, true, epsi=1e-10) {
         if (pred[i]==0) {pred[i] %<>% add(epsi)}
         
         # Calculate totals
-        total_cost <- total_cost - ((true[i] * log(pred[i]) + (1-true[i]) * log(1-pred[i])))
+        total_cost <- total_cost - 
+            (
+                true[i] * log(pred[i]) 
+                + 
+                (1-true[i]) * log(1-pred[i])
+            )
         
     }
     
@@ -1279,6 +1352,7 @@ get_ComputeCost <- function(pred, true, epsi=1e-10) {
     
     # Return
     return(cost)
+    
 }
 ```
 
@@ -1294,6 +1368,7 @@ set_ApplyCost <- function(network_model, cost) {
     
     # Return
     return(network_model)
+    
 }
 ```
 
@@ -1330,6 +1405,7 @@ get_DifferentiateCost <- function(pred, true) {
     
     # Return
     return(diff_cost)
+    
 }
 ```
 
@@ -1353,7 +1429,7 @@ set_ApplyDifferentiateCost <- function(network_model, cost_differential) {
 }
 ```
 
-```{r Run and Apply Cost Differential, eval=TRUE, echo=FALSE}
+```{r Run and Apply Cost Differential, eval=TRUE, echo=TRUE}
 network_model %<>% set_ApplyDifferentiateCost(
     get_DifferentiateCost(network_model[["output"]][["acti"]],trn_cls)
 )
@@ -1372,6 +1448,7 @@ let_BackwardActivateRelu <- function(diff_acti_curr, linr_curr) {
     
     # Return
     return(diff_linr_curr)
+    
 }
 ```
 ```{r Model Function: Let Backward Activate Sigmoid, eval=FALSE, echo=TRUE}
@@ -1383,6 +1460,7 @@ let_BackwardActivateSigmoid <- function(diff_acti_curr, linr_curr) {
     
     # Return
     return(t(diff_linr_curr))
+    
 }
 ```
 
@@ -1431,13 +1509,13 @@ First, we will set up the function, and secondly we will run it.
 The backward propagation function to be defined (`set_BackwardProp()`) must be designed to run through the following steps:
 
 1. Run through each layer in _reverse_ direction. This is necessary because, quite logically, the backward propagation function needs to be run in a backwards direction.
-1. Extract the layer name
+1. Extract the layer name.
 1. Skip the `input` layer. Again, quite logical, because this layer is at the beginning of the network, and does not need to be back-propagated.
 1. Extract the name of the previous layer.
 1. Extract the relevant matrices to be used for subsequent calculations.
 1. Extract the relevant activation function for this particular layer.
 1. Set up some empty matrices, which will house the relevant differentiated matrices.
-1. Differentiate the `activation` matrix of the _current_ layer
+1. Differentiate the `activation` matrix of the _current_ layer.
 1. Differentiate the `linear` matrices, including:
 
     1. `weight` matrix of the _current_ layer.
@@ -1454,23 +1532,39 @@ set_BackwardProp <- function(network_model) {
     for (layr_indx in network_model %>% names() %>% length() %>% 1:. %>% rev) {
         
         # Get the layer name
-        layr_curr <- network_model %>% names() %>% extract(layr_indx)
+        layr_curr <- network_model %>% 
+            names() %>% 
+            extract(layr_indx)
         
         # Skip the 'input' layer
         if (layr_curr == "input") next
         
         # Get the previous layer name
-        layr_prev <- network_model %>% names %>% extract(layr_indx-1)
+        layr_prev <- network_model %>% 
+            names %>% 
+            extract(layr_indx-1)
         
         # Set up the existing matrices
-        linr_curr <- network_model %>% extract2(layr_curr) %>% extract2("linr")
-        wgts_curr <- network_model %>% extract2(layr_curr) %>% extract2("wgts")
-        bias_curr <- network_model %>% extract2(layr_curr) %>% extract2("bias")
-        acti_prev <- network_model %>% extract2(layr_prev) %>% extract2("acti")
-        diff_acti_curr <- network_model %>% extract2(layr_curr) %>% extract2("back_acti")
+        linr_curr <- network_model %>% 
+            extract2(layr_curr) %>% 
+            extract2("linr")
+        wgts_curr <- network_model %>% 
+            extract2(layr_curr) %>% 
+            extract2("wgts")
+        bias_curr <- network_model %>% 
+            extract2(layr_curr) %>% 
+            extract2("bias")
+        acti_prev <- network_model %>% 
+            extract2(layr_prev) %>% 
+            extract2("acti")
+        diff_acti_curr <- network_model %>% 
+            extract2(layr_curr) %>% 
+            extract2("back_acti")
         
         # Get the activation function
-        acti_func_back <- network_model %>% extract2(layr_curr) %>% extract2("acti_func") %>%
+        acti_func_back <- network_model %>% 
+            extract2(layr_curr) %>% 
+            extract2("acti_func") %>%
             str_to_title %>% 
             paste0("let_BackwardActivate", .)
         
@@ -1481,7 +1575,10 @@ set_BackwardProp <- function(network_model) {
         diff_bias_curr <- matrix()
         
         # Differentiate activation
-        diff_linr_curr <- get(acti_func_back)(diff_acti_curr, linr_curr)
+        diff_linr_curr <- get(acti_func_back)(
+            diff_acti_curr,
+            linr_curr
+        )
         
         # Differentiate linear
         list_linr <- get_DifferentiateLinear(
@@ -1512,13 +1609,13 @@ set_BackwardProp <- function(network_model) {
 
 Having defined this function, the next step is to run the function. The below code chunk is wrapped with the `tic()` and `toc()` functions, in order to determine how mucht time it took for the function to run.
 
-```{r Run Backward Propagation, eval=TRUE, echo=FALSE}
+```{r Run Backward Propagation, eval=TRUE, echo=TRUE}
 tic()
 network_model %<>% set_BackwardProp()
 toc()
 ```
 
-As shown, it took approximately 7 seconds to run this function. This is quite impressive, considering that there are over 320,000 parameters to be updated (see [Check Model Parameters](#CheckModelParameters) section).
+As shown, it took approximately `8 seconds` to run this function. This is quite impressive, considering that there are over 320,000 parameters to be updated (see [Check Model Parameters](#CheckModelParameters) section).
 
 # Update Model Parameters {#UpdateModelParameters}
 
@@ -1526,7 +1623,9 @@ After the model parameters have been differenced, it's then necessary to update 
 
 The method used to update these parameters is called [Stochastic Gradient Descent](https://en.wikipedia.org/wiki/Stochastic_gradient_descent). For more information, see [Stochastic Gradient Learning in Neural Networks](https://leon.bottou.org/publications/pdf/nimes-1991.pdf) or [Backpropagation and Stochastic Gradient Descent Method](https://www.sciencedirect.com/science/article/abs/pii/092523129390006O).
 
-The process is quite simple:
+For sure, there are other methods of implementing neural network optimisation. The literature has been spending a lot of effort in this area. There are algorithms such as [RMSProp](https://towardsdatascience.com/understanding-rmsprop-faster-neural-network-learning-62e116fcf29a) and [Adam](https://towardsdatascience.com/adam-latest-trends-in-deep-learning-optimization-6be9a291375c), which implement intelligent methods to achieve a faster convergence, and a more accurate final result. Some good sources for this include [An Empirical Comparison of Optimizers for Machine Learning Models](https://heartbeat.fritz.ai/an-empirical-comparison-of-optimizers-for-machine-learning-models-b86f29957050) and [Overview of Different Optimizers for Neural Networks](https://medium.com/datadriveninvestor/overview-of-different-optimizers-for-neural-networks-e0ed119440c3). For further enhancement and optimisation, it is important to explore these optimisation options.
+
+Nonetheless, the process of implementing Stochastic Gradient Descent is really quite simple:
 
 1. Specify a given _learning rate_ between `0` and `1` (usually very very small, for example `0.001`).
 1. Take the differenced _weight_ and _bias_ matrices, and multiply by the _learning rate_ in a **negative** direction.
@@ -1552,18 +1651,32 @@ set_UpdateModel <- function(network_model, learning_rate=0.001) {
     for (index in network_model %>% names() %>% length() %>% 1:.) {
         
         # Get layer name
-        layr <- network_model %>% names %>% extract(index)
+        layr <- network_model %>% 
+            names() %>% 
+            extract(index)
         
         # Skip 'input' layer
         if (layr=="input") next
         
         # Define gradient steps
-        grad_step_wgts <- -1 * (learning_rate * network_model[[layr]][["back_wgts"]])
-        grad_step_bias <- -1 * (learning_rate * network_model[[layr]][["back_bias"]])
+        grad_step_wgts <- -1 * 
+            (
+                learning_rate * network_model[[layr]][["back_wgts"]]
+            )
+        grad_step_bias <- -1 * 
+            (
+                learning_rate * network_model[[layr]][["back_bias"]]
+            )
         
         # Take steps
-        network_model[[layr]][["wgts"]] <- network_model[[layr]][["wgts"]] + t(grad_step_wgts)
-        network_model[[layr]][["bias"]] <- network_model[[layr]][["bias"]] + grad_step_bias
+        network_model[[layr]][["wgts"]] <- network_model %>% 
+            extract2(layr) %>% 
+            extract2("wgts") %>% 
+            add(t(grad_step_wgts))
+        network_model[[layr]][["bias"]] <- network_model %>% 
+            extract2(layr) %>% 
+            extract2("bias") %>% 
+            add(grad_step_bias)
         
     }
     
@@ -1708,7 +1821,10 @@ let_TrainModel <- function(
             # Differentiate cost
             network_model <- set_ApplyDifferentiateCost(
                 network_model = network_model, 
-                cost_differential = get_DifferentiateCost(network_model[["output"]][["acti"]], y_train_batch)
+                cost_differential = get_DifferentiateCost(
+                    network_model[["output"]][["acti"]], 
+                    y_train_batch
+                )
             )
             
             # Backprop
@@ -1757,10 +1873,16 @@ let_TrainModel <- function(
                     extract2("results") %>% 
                     extract2("cost") %>% 
                     plt_PlotLearningCurve(
-                        input_nodes=input_nodes, hidden_nodes=hidden_nodes, output_nodes=output_nodes,
-                        initialisation_algorithm=initialisation_algorithm, initialisation_order=initialisation_order,
-                        activation_hidden=activation_hidden, activation_final=activation_final,
-                        epochs=epochs, learning_rate=learning_rate, verbosity=verbosity,
+                        input_nodes=input_nodes, 
+                        hidden_nodes=hidden_nodes, 
+                        output_nodes=output_nodes,
+                        initialisation_algorithm=initialisation_algorithm, 
+                        initialisation_order=initialisation_order,
+                        activation_hidden=activation_hidden, 
+                        activation_final=activation_final,
+                        epochs=epochs, 
+                        learning_rate=learning_rate, 
+                        verbosity=verbosity,
                         run_time=get_TimeDifference(time_begin)
                     ) %>% 
                     print()
@@ -1784,6 +1906,7 @@ let_TrainModel <- function(
     
     # Return
     return(output)
+    
 }
 ```
 
@@ -1800,20 +1923,33 @@ Notice here that:
 1. The model results are printed every `10` epochs.
 1. The learning curve is printed at the end.
 
-```{r Run Model Training 1, eval=TRUE, echo=TRUE}
+```{r Run Model Training 1, eval=TRUE, echo=TRUE, message=FALSE}
 training_output <- let_TrainModel(
-    x_train=trn_img, y_train=trn_cls,
-    input_nodes=dim(trn_img)[2], hidden_nodes=c(100,75,50,30,20), output_nodes=1,
-    initialisation_algorithm="he", initialisation_order=2,
-    activation_hidden="relu", activation_final="sigmoid",
-    batches=56, epochs=50, learning_rate=0.01,
-    verbosity=10, print_learning_curve=TRUE
+    x_train=trn_img, 
+    y_train=trn_cls,
+    input_nodes=dim(trn_img)[2], 
+    hidden_nodes=c(100,75,50,30,20), 
+    output_nodes=1,
+    initialisation_algorithm="he", 
+    initialisation_order=2,
+    activation_hidden="relu", 
+    activation_final="sigmoid",
+    batches=56, epochs=50, 
+    learning_rate=0.01,
+    verbosity=10, 
+    print_learning_curve=TRUE
 )
 ```
 
+```{r Save Model Training 1, eval=TRUE, echo=FALSE, message=FALSE}
+# Save output
+ggsave("./Images/ModelTraining1.jpg")
+```
+
+
 It works! This plot proves that the model is training, and it is continuing to learn and improve its performance over time.
 
-Notice here that the cost line begins at approximately `0.4`, and very quickly decreases to `0.4` after 20 Epochs. This can be seen as a success.
+Notice here that the cost line begins at approximately `0.4`, and very quickly decreases to `0.3` after 20 Epochs. In order for it to complete the full `50` Epochs, this took approximately `11 minutes`. This can be seen as a success.
 
 ## Further Experimentation {#FurtherExperimentation}
 
@@ -1825,21 +1961,34 @@ It may be reasonable to try:
 1. A different initialisation algorithm, or initialisation order (change the `initialisation_alghorithm` or `initialisation_order` parameter),
 1. A different activation function on the hidden layers (change the `activation_hidden` parameter),
 1. A different number of batches per Epoch (change the `batches` parameter),
-1. A different number of epochs (change the `epochs`) parameter),
-1. A different learning rate (change the `learning_rate` parameter).
+1. A different number of epochs (change the `epochs` parameter),
+1. A different learning rate (change the `learning_rate` parameter),
+1. Get more data (recall in the [Download Data](#DownloadData) section, only $10,000$ images were downloaded; but there are another $50,000$ images which can be used for further training).
 
-Here is an experimentation of trying some different parameters. Notice how the results also change.
+Here is an experimentation of trying some different parameters. Notice how the results also change. This next round of training took `33 minutes` to run.
 
-```{r Run Model Training 2, eval=TRUE, echo=TRUE}
+```{r Run Model Training 2, eval=TRUE, echo=TRUE, message=FALSE}
 training_output <- let_TrainModel(
-    x_train=trn_img, y_train=trn_cls,
-    input_nodes=dim(trn_img)[2], hidden_nodes=c(100,75,50,30,20), output_nodes=1,
-    initialisation_algorithm="xavier", initialisation_order="layers",
-    activation_hidden="relu", activation_final="sigmoid",
-    batches=56, epochs=100, learning_rate=0.001,
-    verbosity=20, print_learning_curve=TRUE
+    x_train=trn_img, 
+    y_train=trn_cls,
+    input_nodes=dim(trn_img)[2],
+    hidden_nodes=c(100,75,50,30,20), 
+    output_nodes=1,
+    initialisation_algorithm="xavier", 
+    initialisation_order="layers",
+    activation_hidden="relu", 
+    activation_final="sigmoid",
+    batches=56, epochs=100, 
+    learning_rate=0.001,
+    verbosity=20, 
+    print_learning_curve=TRUE
 )
 ```
+```{r Save Model Training 2, eval=TRUE, echo=FALSE, message=FALSE}
+# Save output
+ggsave("./Images/ModelTraining2.jpg")
+```
+
 
 It is then the job of the Data Scientist to identify the optimal configuration of these parameters, in order to achieve a better performance rate. See [Hyperparameter Optimization in Machine Learning Models](https://www.datacamp.com/community/tutorials/parameter-optimization-machine-learning-models) for more details.
 
@@ -1880,9 +2029,9 @@ get_Prediction <- function(
         truth=y_test
     )
     
-    # Add class
+    # Add prdic
     result %<>% 
-        mutate(class=ifelse(probas>threshold, 1, 0))
+        mutate(prdic=ifelse(probas>threshold, 1, 0))
     
     # Return
     return(result)
@@ -1899,20 +2048,50 @@ plt_ConfusionMatrix <- function(confusion_matrix) {
         as.data.frame() %>% 
         rename_all(str_remove_all, "table.") %>% 
         rename("Prediction"=1, "Reference"=2) %>% 
-        mutate(goodbad = ifelse(Prediction == Reference, "good", "bad")) %>%
+        mutate(
+            goodbad = ifelse(
+                Prediction == Reference, 
+                "good", 
+                "bad"
+            )
+        ) %>%
         group_by(Reference) %>% 
         mutate(prop = Freq/sum(Freq)) %>% 
         ungroup() %>% 
         {
-            ggplot(., aes(x = Reference, y = Prediction, fill = goodbad, alpha = prop)) +
+            ggplot(., 
+                aes(
+                    x = Reference, 
+                    y = Prediction, 
+                    fill = goodbad, 
+                    alpha = prop
+                )) +
                 geom_tile() +
-                geom_text(aes(label = Freq), vjust = .5, fontface  = "bold", alpha = 1) +
-                scale_fill_manual(values = c(good = "green", bad = "red")) +
-                scale_x_discrete(limits=levels(.$Reference), position="top") +
-                scale_y_discrete(limits=rev(levels(.$Prediction))) +
+                geom_text(
+                    aes(label = Freq), 
+                    vjust = .5, 
+                    fontface  = "bold", 
+                    alpha = 1
+                ) +
+                scale_fill_manual(
+                    values=c(good="green", bad="red")
+                ) +
+                scale_x_discrete(
+                    limits=levels(.$Reference), 
+                    position="top"
+                ) +
+                scale_y_discrete(
+                    limits=rev(levels(.$Prediction))
+                ) +
                 labs(
                     title="Confusion Matrix",
-                    subtitle=paste0("For: '", .$Prediction[1], "' vs '", .$Prediction[2], "'")
+                    subtitle=paste0(
+                        "For: '", 
+                        .$Prediction[1], 
+                        "' vs '", 
+                        .$Prediction[2], 
+                        "'"
+                    )
                 )
         }
     
@@ -1953,27 +2132,32 @@ lst <- list()
 for (image in 1:16) {
     lst[[image]] <- plt_PlotImage(
         cifar$images[-partition,,,], 
-        Prediction[["class"]], 
+        Prediction[["prdic"]], 
         ClassList,
         image
     )
 }
 
 # View images
-gridExtra::grid.arrange(grobs=lst, ncol=4)
+plt <- gridExtra::grid.arrange(grobs=lst, ncol=4)
 ```
+
+```{r Save View Prediction, eval=TRUE, echo=FALSE, message=FALSE}
+ggsave("./Images/ViewPrediction.jpg", plt)
+```
+
 
 ## Test the Prediction {#TestPrediction}
 
 The next step then is to statistically test the data to see how accurate it may be. For this, the `confusionMatrix()` function (from the `caret` package) used. From this output, it is possible to select the appropriate metric in order for further optimising the neural network.
 
-Since this article is about _showing_ the method, then we will not progress any further is more optimisation here.
+Since this article is about _showing_ the method, then we will not progress any further with more optimisation here.
 
-```{r Confusion Matrix, eval=TRUE, echo=TRUE}
+```{r Create Confusion Matrix, eval=TRUE, echo=TRUE}
 # Set Up
 ConfusionMatrix <- Prediction %>% 
-    mutate_at(c("truth","class"), ~ifelse(.==1,"car","not")) %>% 
-    select(class,truth) %>% 
+    mutate_at(c("truth","prdic"), ~ifelse(.==1,"car","not")) %>% 
+    select(prdic,truth) %>% 
     table %>% 
     caret::confusionMatrix()
 
@@ -1981,18 +2165,28 @@ ConfusionMatrix <- Prediction %>%
 ConfusionMatrix %>% print()
 ```
 
+Next step is to plot the confusion matrix. A good source of understanding and interpreting confusion matrices can be found here: [Confusion Matrix](https://en.wikipedia.org/wiki/Confusion_matrix). In this website, it also includes an image (also copied below) for a very good visual understanding.
 
+![*Confusion Matrix Interpretation*](./Images/Confusion Matrix.png)
 
-```{r Plot Test Prediction, eval=TRUE, echo=TRUE, fig.width=5, fig.height=5, message=FALSE}
-# Print
+When we visualise the confusion matrix of our model, we can see that successfully predicted a majority of the images. However, the largest number of bad classifications is where it predicted that the image was a car, when it actually was not.
+
+```{r Plot Confusion Matrix, eval=TRUE, echo=TRUE, fig.width=5, fig.height=5, message=FALSE}
+# Plot Confusion Matrix
 ConfusionMatrix %>% 
     plt_ConfusionMatrix()
 ```
 
+```{r Save Confusion Matrix, eval=TRUE, echo=FALSE, message=FALSE}
+ggsave("./Images/ConfusionMatrix.jpg")
+```
 
+Another good analytical and plotting tool is to use the ROC Curve (receiver operating characteristics). An ROC Curve is a graphical plot that illustrates the diagnostic ability of a binary classifier system as its discrimination threshold is varied (see [Receiver Operating Characteristic](https://en.wikipedia.org/wiki/Receiver_operating_characteristic)).
+
+Essentially, a model that creates a perfect prediction would have the curve perfectly 'hugging' the top-left of this plot. As our model is not doing this, it is clearly obvious that further training and optimisation is necessary. For this, it is necessary to continue experimenting as mentioned in the [Further Experimentation](#FurtherExperimentation) section.
 
 ```{r Plot ROC, eval=TRUE, echo=TRUE, fig.width=5, fig.height=5, message=FALSE}
-# Print
+# Print ROC
 Prediction %>% 
     ggplot() +
     plotROC::geom_roc(aes(m=probs, d=truth), n.cuts=0) +
@@ -2012,140 +2206,41 @@ Prediction %>%
     )
 ```
 
-
-
-## Run `Xavier`
-
-```{r, fig.width=15, fig.height=8}
-training_output <- let_TrainModel(
-    x_train=trn_img, y_train=trn_cls,
-    input_nodes=dim(trn_img)[2], hidden_nodes=c(100,75,50,30,20), output_nodes=1,
-    initialisation_algorithm="xavier", initialisation_order="layers",
-    batches=56, epochs=500, learning_rate=0.001,
-    activation_hidden="relu", activation_final="sigmoid",
-    verbosity=50, print_learning_curve=TRUE
-)
-
-get_Prediction(tst_img, tst_cls, training_output[["network_model"]], 0.1) %>% 
-    mutate_at(c("truth","class"), funs(ifelse(.==1,"car","not"))) %>% 
-    select(class,truth) %>% 
-    table %>% 
-    caret::confusionMatrix() %>% 
-    (function(x){
-        print(x)
-        return(x)
-    }) %>% 
-    plt_ConfusionMatrix()
-
-get_Prediction(tst_img, tst_cls, training_output[["network_model"]]) %>% 
-    ggplot() +
-    plotROC::geom_roc(aes(m=probs, d=truth), n.cuts=0) +
-    plotROC::style_roc(theme=theme_grey) +
-    theme(
-        plot.title = element_text(hjust=0.5),
-        plot.subtitle = element_text(hjust=0.5)
-    ) + 
-    labs(
-        title="ROC Curve"
-    )
+```{r Save ROC Curve, eval=TRUE, echo=FALSE, message=FALSE}
+ggsave("./Images/ROCCurve.jpg")
 ```
 
-## Run `He`
+# Conclusion
 
-```{r, fig.width=15, fig.height=8}
-training_output <- let_TrainModel(
-    x_train=trn_img, y_train=trn_cls,
-    input_nodes=dim(trn_img)[2], hidden_nodes=c(100,75,50,30,20), output_nodes=1,
-    initialisation_algorithm="he", initialisation_order=2,
-    batches=56, epochs=500, learning_rate=0.01,
-    activation_hidden="relu", activation_final="sigmoid",
-    verbosity=50, print_learning_curve=TRUE
-)
+This is an effective representation for how to build Vanilla Neural Networks in `R`. Here, it has been shown how to:
 
-get_Prediction(tst_img, tst_cls, training_output[["network_model"]], 0.1) %>% 
-    mutate_at(c("truth","class"), funs(ifelse(.==1,"car","not"))) %>% 
-    select(class,truth) %>% 
-    table %>% 
-    caret::confusionMatrix() %>% 
-    (function(x){
-        print(x)
-        return(x)
-    }) %>% 
-    plt_ConfusionMatrix()
+1. Access and check the data
+1. Instantiate and Initialise the network
+1. Run forward propagation
+1. Compute the cost
+1. Run backward propagation
+1. Update the model
+1. Set up a training method to loop through every thing
+1. Predict and assess the performance
 
-get_Prediction(tst_img, tst_cls, training_output[["network_model"]]) %>% 
-    ggplot() +
-    plotROC::geom_roc(aes(m=probs, d=truth), n.cuts=0) +
-    plotROC::style_roc(theme=theme_grey) +
-    theme(
-        plot.title = element_text(hjust=0.5),
-        plot.subtitle = element_text(hjust=0.5)
-    ) + 
-    labs(
-        title="ROC Curve"
-    )
-```
+It has also been shown how to do this entirely in `R`, and without using any pre-defined deep learning framework. For sure, there are other packages that can perform all of the steps here, and perhaps in a more computationally efficient manner. But the use of these packages is not the target of this article. Here, the aim is to dispel the 'blackbox' phenomenon, and to show how to create these deep learning frameworks from the ground up.
 
+As shown, the architecture of these feed-forward neural networks effectively use [matrix multiplication](https://en.wikipedia.org/wiki/Matrix_multiplication) and [differential calculus](https://en.wikipedia.org/wiki/Differential_calculus) in order to adjust the 'weights' of a network, and increase it's predictive power. It does require lots of data, and does require a long time to train and optimise. Furthermore, there are many (many, _many_) different architectural choices that can be made along the way, all of which are at the discretion of the Data Scientist applying this methodology.
 
-# Predict
+At the end of the day, this article has proven that deep learning can definitely be achieved in `R`. Thereby, dispelling the myth that 'in order to do Deep Learning, you must use `Python`'. Certainly, there are many successful implementations of Deep Learning in `Python`; for example: [Building a Feedforward Neural Network from Scratch in Python](https://hackernoon.com/building-a-feedforward-neural-network-from-scratch-in-python-d3526457156b). There's also example of achieving the same in Swift ([Deep Neural Networks in Swift, lessons learned](https://www.tooploox.com/blog/deep-neural-networks-in-swift-lessons-learned)), and in C++ ([Neural Network Implementation in C++ From Scratch](https://www.geeksforgeeks.org/ml-neural-network-implementation-in-c-from-scratch/)), and in Java ([Implementing an Artificial Neural Network in Pure Java (No external dependencies)](https://medium.com/coinmonks/implementing-an-artificial-neural-network-in-pure-java-no-external-dependencies-975749a38114)). Therefore, the specific language used is effectively irrelevant. What matters is the use case, the environment, the business artifacts, and the language that the Data Scientist feels comfortable in.
 
-## Set Up
+# Post Script {#PostScript}
 
-```{r}
-get_Prediction <- function(x_test, y_test, network_model, threshold=0.5) {
-    
-    # Create prediction
-    predic <- set_ForwardProp(
-        network_model=network_model, 
-        data_in=x_test, 
-        activation_hidden="relu", 
-        activation_final="sigmoid"
-    )
-    
-    # Extract probabilities
-    probas <- predic %>% 
-        extract2("output") %>% 
-        extract2("acti")
-    
-    # Define results
-    result <- data.frame(
-        probs=probas,
-        truth=y_test
-    )
-    
-    # Add class
-    result %<>% 
-        mutate(class=ifelse(probas>threshold, 1, 0))
-    
-    # Return
-    return(result)
-    
-}
+**Acknowledgements**: This report was compiled with some assistance from others. Acknowledgements go to:
 
-```
+1. [Alex Scriven](https://www.linkedin.com/in/alexjscriven/)
 
+**Publications**: This report is also published on the following sites:
 
-```{r, fig.width=6, fig.height=5}
-get_Prediction(tst_img, tst_cls, training_output[["network_model"]], 0.1) %>% 
-    mutate_at(c("truth","class"), funs(ifelse(.==1,"car","not"))) %>% 
-    select(class,truth) %>% 
-    table %>% 
-    caret::confusionMatrix() %>% 
-    (function(x){
-        print(x)
-        return(x)
-    }) %>% 
-    plt_ConfusionMatrix()
+1. RPubs: [RPubs/chrimaho/VanillaNeuralNetworksInR]()
+1. GitHub: [GitHub/chrimaho/VanillaNeuralNetworksInR](https://github.com/chrimaho/VanillaNeuralNetworksInR)
+1. Medium: [Medium/chrimaho/VanillaNeuralNetworksInR]()
 
-get_Prediction(tst_img, tst_cls, training_output[["network_model"]]) %>% 
-    ggplot() +
-    plotROC::geom_roc(aes(m=probs, d=truth), n.cuts=0) +
-    plotROC::style_roc(theme=theme_grey) +
-    theme(
-        plot.title = element_text(hjust=0.5),
-        plot.subtitle = element_text(hjust=0.5)
-    ) + 
-    labs(
-        title="ROC Curve"
-    )
-```
+**Change Log**: This publication was modified on the following dates:
+
+1. 00/Oct/2020: Original Publication date.
